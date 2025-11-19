@@ -471,9 +471,38 @@ function parseWorkExperience(text) {
     }
 
     // Get text AFTER the date (description)
-    const descStart = dateInfo.endIndex;
-    const descEnd = nextDateInfo ? nextDateInfo.index : text.length;
-    const description = text.substring(descStart, descEnd).trim();
+    let descStart = dateInfo.endIndex;
+    let descEnd = nextDateInfo ? nextDateInfo.index : text.length;
+    let description = text.substring(descStart, descEnd).trim();
+
+    // Strip out the next job's position/company header if present
+    if (nextDateInfo) {
+      // Extract text before next date and find the header lines (non-bullet lines at the end)
+      const beforeNextDate = text.substring(0, nextDateInfo.index);
+      const allLines = beforeNextDate.split("\n");
+      
+      // Find header lines working backwards from the end
+      const nextJobHeaderLines = [];
+      for (let j = allLines.length - 1; j >= 0; j--) {
+        const line = allLines[j].trim();
+        if (line.length === 0) {
+          // Stop at blank line if we already found header lines
+          if (nextJobHeaderLines.length > 0) break;
+        } else if (!line.startsWith("•")) {
+          // Non-bullet line is likely part of next job's header
+          nextJobHeaderLines.unshift(line);
+          if (nextJobHeaderLines.length >= 2) break; // Only need position and company
+        }
+      }
+
+      // Remove these header lines from the description
+      if (nextJobHeaderLines.length > 0) {
+        const headerText = nextJobHeaderLines.join("\n");
+        if (description.includes(headerText)) {
+          description = description.replace(headerText, "").trim();
+        }
+      }
+    }
 
     jobs.push({
       position: position,
@@ -626,15 +655,42 @@ function parseSkills(text) {
     if (colonIndex > 0) {
       const name = line.substring(0, colonIndex).trim();
       const keywordsStr = line.substring(colonIndex + 1).trim();
-      const keywords = keywordsStr
-        .split(/[,;•|]/)
-        .map((s) => s.trim())
-        .filter((s) => s.length > 0);
+      
+      // Split keywords while preserving content in parentheses
+      const keywords = [];
+      let current = "";
+      let parenDepth = 0;
+      
+      for (let i = 0; i < keywordsStr.length; i++) {
+        const char = keywordsStr[i];
+        if (char === "(") {
+          parenDepth++;
+          current += char;
+        } else if (char === ")") {
+          parenDepth--;
+          current += char;
+        } else if ((char === "," || char === ";" || char === "•" || char === "|") && parenDepth === 0) {
+          // This is a separator and we're not inside parentheses
+          if (current.trim().length > 0) {
+            keywords.push(current.trim());
+          }
+          current = "";
+        } else {
+          current += char;
+        }
+      }
+      
+      // Add the last keyword
+      if (current.trim().length > 0) {
+        keywords.push(current.trim());
+      }
 
-      skills.push({
-        name: name,
-        keywords: keywords,
-      });
+      if (keywords.length > 0) {
+        skills.push({
+          name: name,
+          keywords: keywords,
+        });
+      }
     } else {
       // Just a list of skills
       const keywords = line
