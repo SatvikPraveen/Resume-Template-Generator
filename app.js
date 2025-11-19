@@ -270,6 +270,11 @@ function parseResumeText(text) {
     cleanedText.substring(0, 500)
   );
 
+  // CRITICAL DEBUG: Show full cleaned text in console for inspection
+  console.log("=== FULL CLEANED TEXT ===");
+  console.log(cleanedText);
+  console.log("=== END CLEANED TEXT ===");
+
   // Fallback: local/robust parsing (primary method)
   const lines = cleanedText
     .split("\n")
@@ -354,72 +359,23 @@ function extractLocation(text) {
 function identifySections(text) {
   const sections = {};
 
-  // STRATEGY: Find ALL-CAPS section headers only
-  // Use case-sensitive matching to avoid matching lowercase words like "experience"
-  // in the summary paragraph
-
-  // Map section keyword aliases to canonical names
   const sectionKeywords = {
-    education: [
-      "EDUCATION",
-      "ACADEMIC",
-      "QUALIFICATIONS",
-      "DEGREES",
-      "ACADEMIC BACKGROUND",
-      "EDUCATIONAL BACKGROUND",
-    ],
-    experience: [
-      "PROFESSIONAL EXPERIENCE",
-      "WORK EXPERIENCE",
-      "EMPLOYMENT",
-      "CAREER",
-      "EXPERIENCE",
-      "WORK HISTORY",
-      "PROFESSIONAL HISTORY",
-    ],
-    projects: [
-      "PROJECTS",
-      "PORTFOLIO",
-      "KEY PROJECTS",
-      "NOTABLE PROJECTS",
-      "PERSONAL PROJECTS",
-    ],
-    skills: [
-      "TECHNICAL SKILLS",
-      "CORE COMPETENCIES",
-      "TECHNICAL COMPETENCIES",
-      "KEY SKILLS",
-      "SKILLS",
-      "COMPETENCIES",
-    ],
-    summary: [
-      "PROFESSIONAL SUMMARY",
-      "SUMMARY",
-      "OBJECTIVE",
-      "PROFILE",
-      "OVERVIEW",
-      "ABOUT",
-    ],
-    certifications: [
-      "CERTIFICATIONS",
-      "LICENSES",
-      "CERTIFICATES",
-      "PROFESSIONAL CERTIFICATIONS",
-    ],
-    languages: ["LANGUAGES", "LANGUAGE"],
+    education: ["EDUCATION", "ACADEMIC"],
+    experience: ["EXPERIENCE", "PROFESSIONAL EXPERIENCE", "WORK EXPERIENCE"],
+    projects: ["PROJECTS", "PORTFOLIO"],
+    skills: ["TECHNICAL SKILLS", "SKILLS"],
+    summary: ["PROFESSIONAL SUMMARY", "SUMMARY"],
+    certifications: ["CERTIFICATIONS", "LICENSES"],
+    languages: ["LANGUAGES"],
   };
 
-  // Find all section header positions in the text
-  // CRITICAL: Use case-sensitive matching (no 'i' flag) to only match ALL-CAPS headers
-  // This prevents matching lowercase words like "experience" in the summary
   const headerMatches = [];
 
+  // Case-INSENSITIVE matching to handle all variations
   for (const [sectionName, keywords] of Object.entries(sectionKeywords)) {
     for (const keyword of keywords) {
-      // Match the keyword EXACTLY as ALL-CAPS, with word boundaries, case-sensitive
-      const regex = new RegExp(`\\b${keyword}\\b`, "g");
+      const regex = new RegExp(`\\b${keyword}\\b`, "gi");
       let match;
-
       while ((match = regex.exec(text)) !== null) {
         headerMatches.push({
           sectionName: sectionName,
@@ -430,57 +386,36 @@ function identifySections(text) {
     }
   }
 
-  // Sort by position in text
   headerMatches.sort((a, b) => a.index - b.index);
+  console.log("Headers found:", headerMatches.map(h => `${h.sectionName}@${h.index}`));
 
-  console.log("Identified section headers:", headerMatches);
-
-  // Remove overlapping matches: if two keywords from the same section are very close,
-  // keep only the longer one (e.g., keep "TECHNICAL SKILLS", discard "SKILLS")
+  // Remove duplicates - keep first occurrence of each section
   const uniqueMatches = [];
-  for (let i = 0; i < headerMatches.length; i++) {
-    const current = headerMatches[i];
-    let skipCurrent = false;
-
-    // Check if previous match is same section and within 20 chars (indicating overlap)
-    if (i > 0) {
-      const prev = headerMatches[i - 1];
-      const distance = Math.abs(current.index - prev.index);
-      if (current.sectionName === prev.sectionName && distance < 20) {
-        // If current keyword is shorter, skip it (use the longer previous one)
-        if (current.keyword.length < prev.keyword.length) {
-          skipCurrent = true;
-        }
-      }
-    }
-
-    if (!skipCurrent) {
-      uniqueMatches.push(current);
+  const seenSections = new Set();
+  
+  for (const match of headerMatches) {
+    if (!seenSections.has(match.sectionName)) {
+      uniqueMatches.push(match);
+      seenSections.add(match.sectionName);
     }
   }
 
-  // Extract content between consecutive section headers
+  // Extract content between section headers
   for (let i = 0; i < uniqueMatches.length; i++) {
-    const currentHeader = uniqueMatches[i];
-    const nextHeader = uniqueMatches[i + 1];
+    const current = uniqueMatches[i];
+    const next = uniqueMatches[i + 1];
 
-    // Content starts after the keyword
-    let startIndex = currentHeader.index + currentHeader.keyword.length;
-    // Content ends at the start of next keyword (or end of text)
-    let endIndex = nextHeader ? nextHeader.index : text.length;
+    const startIndex = current.index + current.keyword.length;
+    const endIndex = next ? next.index : text.length;
+    const content = text.substring(startIndex, endIndex).trim();
 
-    let content = text.substring(startIndex, endIndex).trim();
-
-    // Only store the first occurrence of each section type
-    // (in case the section header appears multiple times, we keep the earliest)
-    if (!sections[currentHeader.sectionName] && content.length > 0) {
-      sections[currentHeader.sectionName] = content;
-      console.log(
-        `Found ${currentHeader.sectionName}: ${content.substring(0, 100)}...`
-      );
+    if (content.length > 0) {
+      sections[current.sectionName] = content;
+      console.log(`✓ ${current.sectionName}: ${content.substring(0, 80)}...`);
     }
   }
 
+  console.log("Sections extracted:", Object.keys(sections));
   return sections;
 }
 
