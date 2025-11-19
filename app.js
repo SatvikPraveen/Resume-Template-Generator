@@ -505,78 +505,103 @@ function parseEducation(text) {
 
   const education = [];
 
-  // Split by date patterns to find individual education entries
-  // Format: Institution Name, Degree, Date - Date, Location
+  // Education format in PDF:
+  // Institution Name
+  // City, State
+  // Degree Type and Field
+  // Month Year
+  //
+  // (repeat for each entry)
 
-  const datePattern =
-    /([A-Z][a-z]+\.?\s+\d{4})\s*[-–—]\s*((?:[A-Z][a-z]+\.?\s+\d{4})|Present)/g;
+  const lines = text
+    .split("\n")
+    .map((l) => l.trim())
+    .filter((l) => l.length > 0);
 
-  const dateMatches = [];
-  let match;
-  while ((match = datePattern.exec(text)) !== null) {
-    dateMatches.push({
-      fullDate: match[0],
-      startDate: match[1],
-      endDate: match[2],
-      index: match.index,
-      endIndex: match.index + match[0].length,
+  // Group lines into education entries
+  // Each entry starts with an institution name (capitalized words)
+  // Followed by: City, State; Degree; Year
+  let currentEntry = {
+    institution: "",
+    location: "",
+    degree: "",
+    year: "",
+  };
+
+  const entries = [];
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+
+    // Check if this line contains a location (City, State pattern)
+    const isLocation = /,/.test(line) && /^[A-Z][\w\s]+,\s*[A-Z]/.test(line);
+    // Check if this line is a year
+    const isYear = /^\w+\s+\d{4}$/.test(line);
+    // Check if this line contains degree keywords
+    const isDegree = /bachelor|master|degree|phd|doctorate/i.test(line);
+
+    if (!isLocation && !isYear && !isDegree && currentEntry.institution === "") {
+      // This is likely an institution name
+      currentEntry.institution = line;
+    } else if (isLocation && currentEntry.institution !== "") {
+      // This is location
+      currentEntry.location = line;
+    } else if (isDegree && currentEntry.institution !== "") {
+      // This is degree info
+      currentEntry.degree = line;
+    } else if (isYear && currentEntry.institution !== "") {
+      // This is year - end of entry
+      currentEntry.year = line;
+      entries.push({ ...currentEntry });
+      currentEntry = {
+        institution: "",
+        location: "",
+        degree: "",
+        year: "",
+      };
+    }
+  }
+
+  // Handle last entry if incomplete
+  if (currentEntry.institution !== "") {
+    entries.push(currentEntry);
+  }
+
+  // Parse entries into education objects
+  for (const entry of entries) {
+    let studyType = "Degree";
+    let area = "";
+
+    if (entry.degree) {
+      if (/master/i.test(entry.degree)) {
+        studyType = "Master's";
+      } else if (/bachelor/i.test(entry.degree)) {
+        studyType = "Bachelor's";
+      }
+
+      // Extract field: "Bachelor of Science in Computer Science" -> "Computer Science"
+      const fieldMatch = entry.degree.match(
+        /(?:Bachelor|Master|PhD)(?:\s+of)?\s+(?:Science|Arts|Technology|Engineering)\s+(?:in\s+)?([^,]+)/i
+      );
+      if (fieldMatch) {
+        area = fieldMatch[1].trim();
+      } else {
+        area = entry.degree;
+      }
+    }
+
+    education.push({
+      institution: entry.institution,
+      studyType: studyType,
+      area: area || "Education",
+      startDate: "",
+      endDate: entry.year,
+      location: entry.location,
     });
   }
 
-  // If no dates found, try splitting by blocks (institution entries)
-  if (dateMatches.length === 0) {
-    const blocks = text.split(/\n\s*\n/).filter((b) => b.trim().length > 0);
-    for (const block of blocks) {
-      const lines = block
-        .split("\n")
-        .map((l) => l.trim())
-        .filter((l) => l.length > 0);
-      if (lines.length === 0) continue;
-
-      education.push({
-        institution: lines[0] || "",
-        studyType: "Degree",
-        area: lines[1] || "",
-        startDate: "",
-        endDate: "",
-        location: "",
-      });
-    }
-    return education;
-  }
-
-  // Extract education for each date
-  for (let i = 0; i < dateMatches.length; i++) {
-    const dateInfo = dateMatches[i];
-    const nextDateInfo = dateMatches[i + 1];
-
-    // Get text BEFORE the date (institution and degree)
-    const headerStart = i === 0 ? 0 : dateMatches[i - 1].endIndex;
-    const headerEnd = dateInfo.index;
-    const header = text.substring(headerStart, headerEnd).trim();
-
-    // Get text AFTER the date (location and other info)
-    const afterStart = dateInfo.endIndex;
-    const afterEnd = nextDateInfo ? nextDateInfo.index : text.length;
-    const afterText = text.substring(afterStart, afterEnd).trim();
-
-    // Parse header
-    const headerLines = header
-      .split(/[\n•]+/)
-      .map((l) => l.trim())
-      .filter((l) => l.length > 0);
-    const institution = headerLines[0] || "";
-    const degree = headerLines[1] || "";
-
-    // Extract location from after text
-    const locationMatch = afterText.match(
-      /([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*),\s*([A-Z]{2,})/
-    );
-    const location = locationMatch ? locationMatch[0] : "";
-
-    // Determine study type and area from degree text
-    let studyType = "Degree";
-    let area = degree;
+  return education;
+}
 
     if (degree.toLowerCase().includes("master")) {
       studyType = "Master's";
