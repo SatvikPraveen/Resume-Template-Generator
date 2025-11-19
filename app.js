@@ -811,12 +811,15 @@ function parseEducation(text) {
 
     if (degreeMatch) {
       const fullDegree = degreeMatch[1].trim();
+      console.log(`[Entry ${i + 1}] fullDegree from match: "${fullDegree}"`);
 
       // Extract study type
       if (/master/i.test(fullDegree)) {
         studyType = "Master's";
+        console.log(`[Entry ${i + 1}] → Detected Master's`);
       } else if (/bachelor/i.test(fullDegree)) {
         studyType = "Bachelor's";
+        console.log(`[Entry ${i + 1}] → Detected Bachelor's`);
       } else if (/phd|doctorate/i.test(fullDegree)) {
         studyType = "PhD";
       }
