@@ -777,13 +777,14 @@ function parseEducation(text) {
     // Look for degree pattern - extract "Degree in Field" but stop before next institution
     // Handle both: "Master's in Computer Science" and "Master of Science in Computer Science"
     console.log(
-      `[Entry ${i + 1}] afterDateText: "${afterDateText.substring(0, 80)}"`
+      `[Entry ${i + 1}] afterDateText (${afterDateText.length}): "${afterDateText.substring(0, 150).replace(/\n/g, "\\n")}"`
     );
+    
     let degreeMatch = afterDateText.match(
       /[\s\n]*((?:Master|Bachelor|PhD|Doctorate)'?s?\s+(?:in|of)\s+[A-Za-z\s]+?)(?=\s+[A-Z][a-z]+,|\s+(?:University|College|Institute|School|Academy)|\s|$)/i
     );
     console.log(
-      `[Entry ${i + 1}] Pattern 1 match: ${degreeMatch ? degreeMatch[1] : "NO"}`
+      `[Entry ${i + 1}] Pattern 1: ${degreeMatch ? degreeMatch[1] : "NO"}`
     );
 
     // If first pattern didn't match, try a more lenient one that stops at punctuation or next institution
@@ -792,9 +793,7 @@ function parseEducation(text) {
         /[\s\n]*((?:Master|Bachelor|PhD|Doctorate)'?s?\s+(?:in|of)?\s+[A-Za-z\s&(),-]+?)(?=\s+(?:University|College|Institute|School|Academy)|,|\n|$)/i
       );
       console.log(
-        `[Entry ${i + 1}] Pattern 2 match: ${
-          degreeMatch ? degreeMatch[1] : "NO"
-        }`
+        `[Entry ${i + 1}] Pattern 2: ${degreeMatch ? degreeMatch[1] : "NO"}`
       );
     }
 
@@ -804,9 +803,7 @@ function parseEducation(text) {
         /[\s\n]*(Master|Bachelor|PhD|Doctorate)'?s?\s+(?:in|of)?\s+[A-Za-z\s&(),-]*/i
       );
       console.log(
-        `[Entry ${i + 1}] Pattern 3 match: ${
-          degreeMatch ? degreeMatch[1] : "NO"
-        }`
+        `[Entry ${i + 1}] Pattern 3: ${degreeMatch ? degreeMatch[1] : "NO"}`
       );
     }
 
