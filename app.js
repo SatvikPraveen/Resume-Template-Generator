@@ -780,7 +780,7 @@ function parseEducation(text) {
       `[Entry ${i + 1}] afterDateText: "${afterDateText.substring(0, 80)}"`
     );
     let degreeMatch = afterDateText.match(
-      /^\s*((?:Master|Bachelor|PhD|Doctorate)'?s?\s+(?:in|of)\s+[A-Za-z\s]+?)(?=\s+[A-Z][a-z]+,|\s+(?:University|College|Institute|School|Academy)|\s+$)/i
+      /[\s\n]*((?:Master|Bachelor|PhD|Doctorate)'?s?\s+(?:in|of)\s+[A-Za-z\s]+?)(?=\s+[A-Z][a-z]+,|\s+(?:University|College|Institute|School|Academy)|\s|$)/i
     );
     console.log(
       `[Entry ${i + 1}] Pattern 1 match: ${degreeMatch ? degreeMatch[1] : "NO"}`
@@ -789,7 +789,7 @@ function parseEducation(text) {
     // If first pattern didn't match, try a more lenient one that stops at punctuation or next institution
     if (!degreeMatch) {
       degreeMatch = afterDateText.match(
-        /^\s*((?:Master|Bachelor|PhD|Doctorate)'?s?\s+(?:in|of)?\s+[A-Za-z\s&(),-]+?)(?=\s+(?:University|College|Institute|School|Academy)|,|$)/i
+        /[\s\n]*((?:Master|Bachelor|PhD|Doctorate)'?s?\s+(?:in|of)?\s+[A-Za-z\s&(),-]+?)(?=\s+(?:University|College|Institute|School|Academy)|,|\n|$)/i
       );
       console.log(
         `[Entry ${i + 1}] Pattern 2 match: ${
@@ -801,7 +801,7 @@ function parseEducation(text) {
     // If STILL no match, try just looking for degree types without strict lookahead
     if (!degreeMatch) {
       degreeMatch = afterDateText.match(
-        /(Master|Bachelor|PhD|Doctorate)'?s?\s+(?:in|of)?\s+[A-Za-z\s&(),-]*/i
+        /[\s\n]*(Master|Bachelor|PhD|Doctorate)'?s?\s+(?:in|of)?\s+[A-Za-z\s&(),-]*/i
       );
       console.log(
         `[Entry ${i + 1}] Pattern 3 match: ${
