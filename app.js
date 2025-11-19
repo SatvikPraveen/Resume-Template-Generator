@@ -8,8 +8,8 @@ function cleanAndNormalizeText(text) {
     .replace(/[ \t]+/g, " ")
     // Normalize common dash characters
     .replace(/[-–—]/g, "-")
-    // Clean up excessive newlines
-    .replace(/\n\s*\n+/g, " ")
+    // Clean up EXCESSIVE newlines (3+ becomes 2) but preserve structure-defining blank lines
+    .replace(/\n\s*\n\s*\n+/g, "\n\n")
     // Remove spaces before common punctuation
     .replace(/\s+([.,;:])/g, "$1")
     .trim();
@@ -427,9 +427,6 @@ function parseWorkExperience(text) {
 
   const jobs = [];
 
-  // Split by double line breaks or by date pattern to find individual jobs
-  // Format: Position (Company) Date - Date followed by description
-
   // Find jobs by looking for date patterns: "Month Year - Month Year" or "Month Year - Present"
   const datePattern =
     /([A-Z][a-z]+\.?\s+\d{4})\s*[-–—]\s*((?:[A-Z][a-z]+\.?\s+\d{4})|Present)/g;
@@ -453,40 +450,30 @@ function parseWorkExperience(text) {
     const dateInfo = dateMatches[i];
     const nextDateInfo = dateMatches[i + 1];
 
-    // Get text BEFORE the date (position and company)
-    const headerStart = i === 0 ? 0 : dateMatches[i - 1].endIndex;
-    const headerEnd = dateInfo.index;
-    const header = text.substring(headerStart, headerEnd).trim();
+    // Find the header by working BACKWARDS from the date
+    // The header consists of the 1-2 lines immediately before the date
+    const linesBefore = text.substring(0, dateInfo.index);
+    const headerLines = linesBefore
+      .split("\n")
+      .reverse() // Reverse to find the last lines before date
+      .map((l) => l.trim())
+      .filter((l) => l.length > 0);
+
+    // Take first 2 non-empty lines (they may be position and company, or position (company))
+    let position = "";
+    let company = "";
+
+    if (headerLines.length >= 2) {
+      position = headerLines[1]; // Second-to-last non-empty line
+      company = headerLines[0]; // Last non-empty line before date
+    } else if (headerLines.length === 1) {
+      position = headerLines[0]; // Only one line
+    }
 
     // Get text AFTER the date (description)
     const descStart = dateInfo.endIndex;
     const descEnd = nextDateInfo ? nextDateInfo.index : text.length;
     const description = text.substring(descStart, descEnd).trim();
-
-    // Parse header for position and company
-    // Typically: "Position Title (Company Name)" or just "Position Title"
-    // Or: "Position\nCompany"
-    let position = "";
-    let company = "";
-
-    if (header.includes("(")) {
-      // Format: "Position (Company)"
-      const match = header.match(/^([^(]+?)\s*\(([^)]+)\)/);
-      if (match) {
-        position = match[1].trim();
-        company = match[2].trim();
-      } else {
-        position = header;
-      }
-    } else {
-      // Try to split by newline or use first line as position
-      const lines = header
-        .split(/[\n•]+/)
-        .map((l) => l.trim())
-        .filter((l) => l.length > 0);
-      position = lines[0] || "";
-      company = lines[1] || "";
-    }
 
     jobs.push({
       position: position,
