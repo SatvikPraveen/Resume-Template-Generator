@@ -448,7 +448,8 @@ function identifySections(text) {
   const sectionPatterns = [
     {
       sectionName: "education",
-      pattern: /(?:^|\n)\s*(?:E\s*D\s*U\s*C\s*A\s*T\s*I\s*O\s*N|EDUCATION|ACADEMIC)\s*(?:\n|$)/gi,
+      pattern:
+        /(?:^|\n)\s*(?:E\s*D\s*U\s*C\s*A\s*T\s*I\s*O\s*N|EDUCATION|ACADEMIC)\s*(?:\n|$)/gi,
     },
     {
       sectionName: "experience",
@@ -457,7 +458,8 @@ function identifySections(text) {
     },
     {
       sectionName: "projects",
-      pattern: /(?:^|\n)\s*(?:P\s*R\s*O\s*J\s*E\s*C\s*T\s*S|PROJECTS|PORTFOLIO)\s*(?:\n|$)/gi,
+      pattern:
+        /(?:^|\n)\s*(?:P\s*R\s*O\s*J\s*E\s*C\s*T\s*S|PROJECTS|PORTFOLIO)\s*(?:\n|$)/gi,
     },
     {
       sectionName: "skills",
@@ -704,6 +706,11 @@ function parseEducation(text) {
     });
   }
 
+  console.log(`[parseEducation] Found ${dateMatches.length} date ranges`);
+  dateMatches.forEach((dm, i) => {
+    console.log(`  Date ${i+1}: "${dm.fullMatch}" at index ${dm.index}`);
+  });
+
   // Process each date range found
   for (let i = 0; i < dateMatches.length; i++) {
     const current = dateMatches[i];
@@ -853,8 +860,13 @@ function parseEducation(text) {
         endDate: current.endDate,
         location: location,
       });
+      console.log(`[parseEducation] Added entry: ${institution} (${studyType})`);
+    } else {
+      console.log(`[parseEducation] SKIPPED entry - institution:${!!institution}, startDate:${!!current.startDate}, endDate:${!!current.endDate}, isDegreeType:${isDegreeType}, studyType:${studyType}`);
     }
   }
+
+  console.log(`[parseEducation] Returning ${education.length} education entries`);
 
   return education;
 }
