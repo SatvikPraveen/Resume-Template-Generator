@@ -774,114 +774,91 @@ function parseEducation(text) {
       afterDateText = text.substring(afterDateStart, afterDateStart + 200);
     }
 
-    // Look for degree pattern - extract "Degree in Field" but stop before next institution
-    // Handle both: "Master's in Computer Science" and "Master of Science in Computer Science"
-    const rawAfterDateText = JSON.stringify(afterDateText);
+    // BRUTE FORCE: Look for degree keywords directly in the text
     console.log(
       `[Entry ${i + 1}] afterDateText (${
         afterDateText.length
       }): "${afterDateText.substring(0, 150).replace(/\n/g, "\\n")}"`
     );
-    console.log(
-      `[Entry ${i + 1}] afterDateText (JSON): ${rawAfterDateText.substring(
-        0,
-        200
-      )}`
-    );
 
-    // SIMPLIFIED: Just grab "Degree in Field" - stop at location, newline, or institution
-    let degreeMatch = afterDateText.match(
-      /[\s\n]+((?:Master|Bachelor|PhD|Doctorate)'?s?)\s+(?:in|of)\s+([A-Za-z\s&(),-]+?)(?=\s+[A-Z][a-z]*,|\s+(?:University|College|Institute|School|Academy)|\n|$)/i
-    );
-    console.log(
-      `[Entry ${i + 1}] Pattern 1: ${degreeMatch ? "✓ MATCH" : "✗ NO"} ${
-        degreeMatch ? `→ "${degreeMatch[1]}" | "${degreeMatch[2]}"` : ""
-      }`
-    );
+    let degreeFound = false;
+    let degreeType = "";
+    let fieldOfStudy = "";
+    let location = "";
 
-    // If first pattern didn't match, try more lenient version with optional "in/of"
-    if (!degreeMatch) {
-      degreeMatch = afterDateText.match(
-        /[\s\n]+((?:Master|Bachelor|PhD|Doctorate)'?s?)\s+(?:in|of)?\s+([A-Za-z\s&(),-]+?)(?=\s+[A-Z][a-z]*,|\s+(?:University|College|Institute|School|Academy)|\n|$)/i
-      );
-      console.log(
-        `[Entry ${i + 1}] Pattern 2: ${degreeMatch ? "✓ MATCH" : "✗ NO"} ${
-          degreeMatch ? `→ "${degreeMatch[1]}" | "${degreeMatch[2]}"` : ""
-        }`
-      );
+    // Look for each degree keyword
+    const degrees = [
+      { keyword: "Master's", type: "Master's" },
+      { keyword: "Master", type: "Master's" },
+      { keyword: "Bachelor's", type: "Bachelor's" },
+      { keyword: "Bachelor", type: "Bachelor's" },
+      { keyword: "PhD", type: "PhD" },
+      { keyword: "Doctorate", type: "PhD" },
+    ];
+
+    for (const degreeInfo of degrees) {
+      // Case-insensitive search
+      const upperText = afterDateText.toUpperCase();
+      const upperKeyword = degreeInfo.keyword.toUpperCase();
+      const idx = upperText.indexOf(upperKeyword);
+
+      if (idx !== -1) {
+        degreeType = degreeInfo.type;
+        console.log(
+          `[Entry ${i + 1}] Found degree: "${
+            degreeInfo.keyword
+          }" at position ${idx}`
+        );
+
+        // Extract field: Look for "in/of [field]" after the degree keyword
+        const afterKeyword = afterDateText.substring(
+          idx + degreeInfo.keyword.length
+        );
+
+        // First, try to get field with "in" or "of"
+        let fieldMatch = afterKeyword.match(
+          /\s*(?:in|of)\s+([A-Za-z\s&(),-]+?)(?=,|\n|$)/i
+        );
+        if (fieldMatch && fieldMatch[1]) {
+          fieldOfStudy = fieldMatch[1].trim();
+          console.log(`[Entry ${i + 1}] Found field: "${fieldOfStudy}"`);
+        } else {
+          // If no "in/of", just grab the next word(s) as field
+          fieldMatch = afterKeyword.match(
+            /\s+([A-Za-z][A-Za-z\s&(),-]*?)(?=,|\n|[A-Z]{2,}|$)/
+          );
+          if (fieldMatch && fieldMatch[1]) {
+            fieldOfStudy = fieldMatch[1].trim();
+            console.log(
+              `[Entry ${i + 1}] Found field (no in/of): "${fieldOfStudy}"`
+            );
+          }
+        }
+
+        // Now try to extract location (City, Country)
+        const locationMatch = afterKeyword.match(
+          /([A-Z][a-z]+),\s*([A-Z][A-Za-z]{1,10})/
+        );
+        if (locationMatch) {
+          location = `${locationMatch[1]}, ${locationMatch[2]}`;
+          console.log(`[Entry ${i + 1}] Found location: "${location}"`);
+        }
+
+        degreeFound = true;
+        break;
+      }
     }
 
-    // If STILL no match, grab just the degree keyword
-    if (!degreeMatch) {
-      degreeMatch = afterDateText.match(
-        /[\s\n]+(Master|Bachelor|PhD|Doctorate)'?s?\s+([A-Za-z\s&(),-]+?)(?=\s+[A-Z][a-z]*,|\n|$)/i
-      );
-      console.log(
-        `[Entry ${i + 1}] Pattern 3: ${degreeMatch ? "✓ MATCH" : "✗ NO"} ${
-          degreeMatch ? `→ "${degreeMatch[1]}" | "${degreeMatch[2]}"` : ""
-        }`
-      );
-    }
-
-    // If STILL no match, try without ANY lookahead - just look for degree keywords
-    if (!degreeMatch) {
-      degreeMatch = afterDateText.match(
-        /(Master|Bachelor|PhD|Doctorate)'?s?\s+(?:of\s+)?(?:in\s+)?([A-Za-z\s&(),-]+)/i
-      );
-      console.log(
-        `[Entry ${i + 1}] Pattern 4 (fallback): ${
-          degreeMatch ? "✓ MATCH" : "✗ NO"
-        } ${degreeMatch ? `→ "${degreeMatch[1]}" | "${degreeMatch[2]}"` : ""}`
-      );
-    }
-
-    if (degreeMatch) {
-      // degreeMatch[1] = degree type (Master, Bachelor, PhD, Doctorate)
-      // degreeMatch[2] = field of study (Computer Science, Information Technology, etc)
-      const degreeType = degreeMatch[1].trim();
-      const fieldOfStudy = degreeMatch[2] ? degreeMatch[2].trim() : "";
-
+    if (degreeFound) {
+      studyType = degreeType;
+      area = fieldOfStudy || degreeType;
       console.log(
         `[Entry ${
           i + 1
-        }] Matched: degreeType="${degreeType}", field="${fieldOfStudy}"`
+        }] ✓ Degree matched: type="${studyType}", field="${area}"`
       );
-
-      // Extract study type
-      if (/master/i.test(degreeType)) {
-        studyType = "Master's";
-        console.log(`[Entry ${i + 1}] → Setting studyType to Master's`);
-      } else if (/bachelor/i.test(degreeType)) {
-        studyType = "Bachelor's";
-        console.log(`[Entry ${i + 1}] → Setting studyType to Bachelor's`);
-      } else if (/phd|doctorate/i.test(degreeType)) {
-        studyType = "PhD";
-        console.log(`[Entry ${i + 1}] → Setting studyType to PhD`);
-      }
-
-      // Use matched field, or extract from full match
-      if (fieldOfStudy) {
-        area = fieldOfStudy;
-      } else {
-        // Fallback: try to extract field from full match
-        const fullMatch = degreeMatch[0];
-        const fieldMatch = fullMatch.match(/(?:in|of)\s+([A-Za-z\s&(),-]+)/i);
-        area = fieldMatch ? fieldMatch[1].trim() : "";
-      }
-    }
-
-    // Extract location: look for patterns like "City, Country" or "City, State"
-    // Location comes after degree
-    let location = "";
-    if (degreeMatch) {
-      const afterDegree = afterDateText.substring(degreeMatch[0].length);
-      // Match: spaces + City + comma + spaces + Country/State (1-2 words max)
-      const locationMatch = afterDegree.match(
-        /\s+([A-Z][a-z]+),\s*([A-Z][A-Za-z]{1,5}(?:\s+[A-Z][A-Za-z]{1,5})?)(?:\s|$)/
-      );
-      if (locationMatch) {
-        location = `${locationMatch[1]}, ${locationMatch[2]}`;
-      }
+    } else {
+      console.log(`[Entry ${i + 1}] ✗ NO DEGREE FOUND`);
     }
 
     // Only add if we found at least institution and dates
