@@ -437,9 +437,15 @@ function extractURL(text) {
 }
 
 function extractLocation(text) {
-  // Look for city, state patterns
-  const locationRegex = /([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*),\s*([A-Z]{2})/;
-  const match = text.match(locationRegex);
+  // Look for location in the FIRST 10 lines only (header section)
+  // This avoids matching locations from education/work experience sections
+  const lines = text.split('\n').slice(0, 10).join('\n');
+  
+  // Look for city, state/country patterns
+  // But exclude patterns like "Computer Science Chicago" (degree field with city)
+  // We're looking for just "City, State" patterns in contact info
+  const locationRegex = /(?<![\s\w])([A-Z][a-z]+),\s*([A-Z]{2}|[A-Z][a-z]+)(?![a-z])/;
+  const match = lines.match(locationRegex);
   return match ? match[0] : "";
 }
 
@@ -818,12 +824,18 @@ function parseEducation(text) {
           idx + degreeInfo.keyword.length
         );
 
-        // First, try to get field with "in" or "of" - stop at comma which indicates location
+        // Look for "in/of [field]" - stop at location (City, Country) or end of line
+        // Location indicators: Capital City, Capital Country/State
         let fieldMatch = afterKeyword.match(
-          /\s*(?:in|of)\s+([A-Za-z\s&(),-]+?)(?=\s+[A-Z][a-z]+,|,|\n|$)/i
+          /\s*(?:in|of)\s+([A-Za-z\s&(),-]+?)(?=\s+[A-Z][a-z]+,\s*[A-Z]|,|\n|$)/i
         );
+
         if (fieldMatch && fieldMatch[1]) {
-          fieldOfStudy = fieldMatch[1].trim();
+          // Clean the field - remove location part if present
+          let field = fieldMatch[1].trim();
+          // Remove anything after "City," pattern
+          field = field.replace(/\s+[A-Z][a-z]+,.*$/, "").trim();
+          fieldOfStudy = field;
           console.log(`[Entry ${i + 1}] Found field: "${fieldOfStudy}"`);
         }
 
@@ -963,70 +975,60 @@ function parseProjects(text) {
 
   const projects = [];
 
-  // Split by project titles - typically "Project Name | Technology keywords"
-  // Looking for: Capital words | tech, tech, tech
-  const lines = text.split("\n").filter((l) => l.trim().length > 0);
+  // Split projects by looking for "Project Name | Tech1, Tech2" pattern
+  // followed by bullet points with description
 
-  let currentProject = null;
-  let currentDescription = [];
+  // First, split by the project pattern: "Capital Words | techs"
+  const projectPattern =
+    /([A-Z][A-Za-z0-9\s\-&()]+?)\s*\|\s*([^•\n]+?)(?=•|[A-Z][A-Za-z0-9\s\-&()]+?\s*\||$)/g;
 
-  for (const line of lines) {
-    // Check if this line has a project title (contains pipe and starts with capital)
-    if (line.includes("|") && /^[A-Z]/.test(line.trim())) {
-      // This is a project header line
+  let match;
+  const matches = [];
 
-      // Save previous project if exists
-      if (currentProject) {
-        currentProject.summary = currentDescription
-          .join(" ")
-          .replace(/•/g, "→") // Replace bullets with arrow for readability
-          .replace(/\s+/g, " ") // Collapse spaces
-          .trim();
-        projects.push(currentProject);
-      }
-
-      // Parse new project - split at pipe and then stop at first bullet
-      const pipeSplit = line.split("|");
-      const titlePart = pipeSplit[0].trim();
-      let techPart = pipeSplit[1] ? pipeSplit[1].trim() : "";
-
-      // If tech part contains bullet, extract only the part before it
-      if (techPart.includes("•")) {
-        techPart = techPart.substring(0, techPart.indexOf("•")).trim();
-      }
-
-      const keywords = techPart
-        .split(/[,;]/)
-        .map((s) => s.trim())
-        .filter((s) => s.length > 0 && s !== "•");
-
-      currentProject = {
-        name: titlePart,
-        keywords: keywords,
-        summary: "",
-      };
-      currentDescription = [];
-    } else if (currentProject && line.trim().length > 0) {
-      // This is description line
-      const cleanLine = line
-        .trim()
-        .replace(/^•\s*/, "") // Remove leading bullet
-        .replace(/\s+/g, " "); // Collapse spaces
-
-      if (cleanLine.length > 0) {
-        currentDescription.push(cleanLine);
-      }
-    }
+  while ((match = projectPattern.exec(text)) !== null) {
+    matches.push({
+      name: match[1].trim(),
+      techs: match[2].trim(),
+      index: match.index,
+      endIndex: match.index + match[0].length,
+    });
   }
 
-  // Save last project
-  if (currentProject) {
-    currentProject.summary = currentDescription
-      .join(" ")
-      .replace(/•/g, "→")
-      .replace(/\s+/g, " ")
+  // Now extract descriptions between projects
+  for (let i = 0; i < matches.length; i++) {
+    const currentMatch = matches[i];
+    const nextMatch = matches[i + 1];
+
+    // Extract technologies (before any bullet point)
+    let techText = currentMatch.techs;
+    if (techText.includes("•")) {
+      techText = techText.substring(0, techText.indexOf("•")).trim();
+    }
+
+    const keywords = techText
+      .split(/[,;]/)
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0 && !/^•/.test(s) && s !== "•");
+
+    // Extract description: from end of current match to start of next match (or end of text)
+    let descStart = currentMatch.endIndex;
+    let descEnd = nextMatch ? nextMatch.index : text.length;
+    let description = text.substring(descStart, descEnd).trim();
+
+    // Clean up description
+    description = description
+      .replace(/^•\s*/gm, "") // Remove bullet points
+      .replace(/\s+/g, " ") // Collapse spaces
       .trim();
-    projects.push(currentProject);
+
+    // Only add if we have a name and either keywords or description
+    if (currentMatch.name && (keywords.length > 0 || description.length > 0)) {
+      projects.push({
+        name: currentMatch.name,
+        keywords: keywords,
+        summary: description,
+      });
+    }
   }
 
   return projects;
@@ -1047,9 +1049,16 @@ function cleanupResumeData(resumeData) {
   // Apply company fixes
   if (cleaned.work && Array.isArray(cleaned.work)) {
     cleaned.work.forEach((job) => {
+      // Fix company name
       for (const [bad, good] of Object.entries(companyFixes)) {
         if (job.company && job.company.includes(bad)) {
           job.company = job.company.replace(bad, good);
+        }
+      }
+      // Also fix position field
+      for (const [bad, good] of Object.entries(companyFixes)) {
+        if (job.position && job.position.includes(bad)) {
+          job.position = job.position.replace(bad, good);
         }
       }
       // Remove extra spaces
