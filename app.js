@@ -960,53 +960,70 @@ function parseProjects(text) {
 
   const projects = [];
 
-  // Strategy: Find all patterns like "Project Name | Technology1, Technology2"
-  // A project title is followed by description with bullet points
-  // This handles malformed PDF text where everything is on one line
+  // Split by project titles - typically "Project Name | Technology keywords"
+  // Looking for: Capital words | tech, tech, tech
+  const lines = text.split("\n").filter((l) => l.trim().length > 0);
 
-  // Regex to find: [Project Title] | [Technologies]
-  // The project title is typically capitalized words
-  const projectTitleRegex =
-    /([A-Z][A-Za-z0-9\s]+(?:[A-Z][A-Za-z0-9\s]+)*)\s*\|\s*([^•]+?)(?=•|(?:[A-Z][A-Za-z0-9\s]+(?:[A-Z][A-Za-z0-9\s]+)*\s*\|)|$)/g;
+  let currentProject = null;
+  let currentDescription = [];
 
-  let match;
-  const matches = [];
+  for (const line of lines) {
+    // Check if this line has a project title (contains pipe and starts with capital)
+    if (line.includes("|") && /^[A-Z]/.test(line.trim())) {
+      // This is a project header line
 
-  while ((match = projectTitleRegex.exec(text)) !== null) {
-    matches.push({
-      title: match[1].trim(),
-      tech: match[2].trim(),
-      index: match.index,
-      length: match[0].length,
-    });
-  }
+      // Save previous project if exists
+      if (currentProject) {
+        currentProject.summary = currentDescription
+          .join(" ")
+          .replace(/•/g, "→") // Replace bullets with arrow for readability
+          .replace(/\s+/g, " ") // Collapse spaces
+          .trim();
+        projects.push(currentProject);
+      }
 
-  // Extract descriptions between consecutive projects
-  for (let i = 0; i < matches.length; i++) {
-    const currentMatch = matches[i];
-    const nextMatch = matches[i + 1];
+      // Parse new project - split at pipe and then stop at first bullet
+      const pipeSplit = line.split("|");
+      const titlePart = pipeSplit[0].trim();
+      let techPart = pipeSplit[1] ? pipeSplit[1].trim() : "";
 
-    // Description starts right after the current match
-    let descStart = currentMatch.index + currentMatch.length;
-    // Description ends at the start of next project or end of text
-    let descEnd = nextMatch ? nextMatch.index : text.length;
+      // If tech part contains bullet, extract only the part before it
+      if (techPart.includes("•")) {
+        techPart = techPart.substring(0, techPart.indexOf("•")).trim();
+      }
 
-    let description = text.substring(descStart, descEnd).trim();
-
-    // Clean up description: remove bullets and collapse spaces
-    description = description
-      .replace(/^•\s*/gm, "") // Remove bullet points
-      .replace(/\s+/g, " ") // Collapse multiple spaces
-      .trim();
-
-    projects.push({
-      name: currentMatch.title,
-      keywords: currentMatch.tech
+      const keywords = techPart
         .split(/[,;]/)
         .map((s) => s.trim())
-        .filter((s) => s.length > 0),
-      summary: description,
-    });
+        .filter((s) => s.length > 0 && s !== "•");
+
+      currentProject = {
+        name: titlePart,
+        keywords: keywords,
+        summary: "",
+      };
+      currentDescription = [];
+    } else if (currentProject && line.trim().length > 0) {
+      // This is description line
+      const cleanLine = line
+        .trim()
+        .replace(/^•\s*/, "") // Remove leading bullet
+        .replace(/\s+/g, " "); // Collapse spaces
+
+      if (cleanLine.length > 0) {
+        currentDescription.push(cleanLine);
+      }
+    }
+  }
+
+  // Save last project
+  if (currentProject) {
+    currentProject.summary = currentDescription
+      .join(" ")
+      .replace(/•/g, "→")
+      .replace(/\s+/g, " ")
+      .trim();
+    projects.push(currentProject);
   }
 
   return projects;
