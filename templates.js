@@ -2046,195 +2046,401 @@ const TEMPLATES = {
       };
 
       const html = `
-        <div class="resume-content dark">
-          <div class="dark-header">
-            <h1>${data.basics?.name || "Your Name"}</h1>
-            <p class="tagline">${data.basics?.label || "Professional"}</p>
-            ${[data.basics?.email, data.basics?.phone, data.basics?.location]
-              .filter(Boolean)
-              .map((item) => `<p class="contact-item">${item}</p>`)
-              .join("")}
+        <div class="resume-content cyberpunk-dark">
+          <div class="cyberpunk-container">
+            <div class="cyberpunk-header">
+              <div class="header-border-top">╔═══════════════════════════════════════╗</div>
+              <div class="header-content">
+                <h1 class="name-glitch">${data.basics?.name || "Your Name"}</h1>
+                <div class="title-line">█ ${(
+                  data.basics?.label || "Professional"
+                )
+                  .split("|")[0]
+                  .trim()}</div>
+              </div>
+              <div class="header-border-bottom">╚═══════════════════════════════════════╝</div>
+            </div>
+
+            <div class="data-sections">
+              <div class="contact-block">
+                <div class="block-header">▸ SYSTEM.PROFILE.ACTIVE</div>
+                <div class="block-content">
+                  ${
+                    data.basics?.email
+                      ? `<div class="data-line">Email ► <span class="neon-cyan">${data.basics.email}</span></div>`
+                      : ""
+                  }
+                  ${
+                    data.basics?.phone
+                      ? `<div class="data-line">Phone ► <span class="neon-cyan">${data.basics.phone}</span></div>`
+                      : ""
+                  }
+                </div>
+              </div>
+
+              ${
+                data.work && data.work.length
+                  ? `
+                <div class="experience-block">
+                  <div class="block-header">▸ EXPERIENCE_LOGS [${
+                    data.work.length
+                  }/${data.work.length}]</div>
+                  <div class="block-content">
+                    ${data.work
+                      .map(
+                        (job, idx) => `
+                      <div class="entry-box">
+                        <div class="entry-border">┌─ ${formatDate(
+                          job.startDate,
+                          job.endDate
+                        )} ─┐</div>
+                        <div class="entry-title"><span class="neon-magenta">[${
+                          idx + 1
+                        }]</span> ${job.position || "Position"}</div>
+                        <div class="entry-subtitle">${
+                          job.name || "Company"
+                        }</div>
+                        <div class="entry-desc indent">${(
+                          job.summary || ""
+                        ).substring(0, 120)}...</div>
+                        <div class="entry-border">└────────────────────────┘</div>
+                      </div>
+                    `
+                      )
+                      .join("")}
+                  </div>
+                </div>
+              `
+                  : ""
+              }
+
+              ${
+                data.education && data.education.length
+                  ? `
+                <div class="education-block">
+                  <div class="block-header">▸ KNOWLEDGE_BASE [${
+                    data.education.length
+                  }/${data.education.length}]</div>
+                  <div class="block-content">
+                    ${data.education
+                      .map(
+                        (edu) => `
+                      <div class="data-line">
+                        <span class="neon-green">📚</span> ${
+                          edu.studyType
+                        } - <span class="neon-cyan">${edu.area}</span>
+                      </div>
+                      <div class="data-line indent">${
+                        edu.institution
+                      } (${formatDate(edu.startDate, edu.endDate)})</div>
+                    `
+                      )
+                      .join("")}
+                  </div>
+                </div>
+              `
+                  : ""
+              }
+
+              ${
+                data.skills && data.skills.length
+                  ? `
+                <div class="skills-block">
+                  <div class="block-header">▸ CAPABILITIES [${
+                    data.skills.length
+                  }/7]</div>
+                  <div class="block-content">
+                    ${data.skills
+                      .map(
+                        (skill) => `
+                      <div class="skill-line">
+                        <span class="neon-magenta">[${skill.name}]</span>
+                        <span class="skill-bar">████████████████</span>
+                        <span class="neon-green">${
+                          Array.isArray(skill.keywords)
+                            ? skill.keywords.slice(0, 3).join(", ")
+                            : ""
+                        }</span>
+                      </div>
+                    `
+                      )
+                      .join("")}
+                  </div>
+                </div>
+              `
+                  : ""
+              }
+
+              ${
+                data.projects && data.projects.length
+                  ? `
+                <div class="projects-block">
+                  <div class="block-header">▸ PROJECTS_INDEXED [${
+                    data.projects.length
+                  }/5]</div>
+                  <div class="block-content">
+                    ${data.projects
+                      .map(
+                        (proj, idx) => `
+                      <div class="project-box">
+                        <div class="project-title"><span class="neon-cyan">❱</span> ${
+                          proj.name
+                        }</div>
+                        <div class="project-tech">tech: <span class="neon-magenta">${
+                          Array.isArray(proj.keywords)
+                            ? proj.keywords.join(", ")
+                            : ""
+                        }</span></div>
+                        <div class="project-desc">${(
+                          proj.summary || ""
+                        ).substring(0, 100)}...</div>
+                      </div>
+                    `
+                      )
+                      .join("")}
+                  </div>
+                </div>
+              `
+                  : ""
+              }
+            </div>
+
+            <div class="footer-border">═══════════════════════════════════════════════════</div>
           </div>
-
-          ${
-            data.basics?.summary
-              ? `<div class="dark-summary">${data.basics.summary}</div>`
-              : ""
-          }
-
-          ${
-            data.work && data.work.length
-              ? `
-            <section class="dark-section">
-              <h2>Experience</h2>
-              ${data.work
-                .map(
-                  (job) => `
-                <div class="dark-entry">
-                  <div class="entry-head">
-                    <h3>${job.position || "Position"}</h3>
-                    <span>${formatDate(job.startDate, job.endDate)}</span>
-                  </div>
-                  <p class="dark-company">${job.name || "Company"}</p>
-                  ${job.summary ? `<p>${job.summary}</p>` : ""}
-                </div>
-              `
-                )
-                .join("")}
-            </section>
-          `
-              : ""
-          }
-
-          ${
-            data.education && data.education.length
-              ? `
-            <section class="dark-section">
-              <h2>Education</h2>
-              ${data.education
-                .map(
-                  (edu) => `
-                <div class="dark-entry">
-                  <div class="entry-head">
-                    <h3>${edu.studyType || "Degree"} in ${
-                    edu.area || "Field"
-                  }</h3>
-                    <span>${formatDate(edu.startDate, edu.endDate)}</span>
-                  </div>
-                  <p class="dark-institution">${
-                    edu.institution || "Institution"
-                  }</p>
-                </div>
-              `
-                )
-                .join("")}
-            </section>
-          `
-              : ""
-          }
-
-          ${
-            data.skills && data.skills.length
-              ? `
-            <section class="dark-section">
-              <h2>Skills</h2>
-              ${data.skills
-                .map(
-                  (skill) => `
-                <div class="skill-row">
-                  <strong>${skill.name}</strong>
-                  <span>${
-                    Array.isArray(skill.keywords)
-                      ? skill.keywords.join(", ")
-                      : skill.keywords || ""
-                  }</span>
-                </div>
-              `
-                )
-                .join("")}
-            </section>
-          `
-              : ""
-          }
         </div>
       `;
 
       const css = `
-        .resume-content.dark {
-          background: #1a1a1a;
-          color: #e0e0e0;
-          font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        .resume-content.cyberpunk-dark {
+          background: linear-gradient(135deg, #0a0a0f 0%, #1a0a2e 100%);
+          color: #00ff00;
+          font-family: 'Courier New', monospace;
           padding: 30px;
-          border-radius: 8px;
+          min-height: 100vh;
         }
-        .dark-header {
-          margin-bottom: 30px;
-          border-bottom: 2px solid #00bcd4;
-          padding-bottom: 20px;
+
+        .cyberpunk-container {
+          background: #0d1117;
+          border: 2px solid #00ff00;
+          box-shadow: 0 0 20px rgba(0, 255, 0, 0.3), inset 0 0 20px rgba(0, 255, 0, 0.05);
+          padding: 20px;
         }
-        .dark-header h1 {
-          font-size: 28px;
-          margin: 0 0 8px 0;
-          color: #00bcd4;
-          font-weight: 700;
-        }
-        .tagline {
-          font-size: 13px;
-          color: #b0bec5;
-          margin: 0 0 8px 0;
-        }
-        .contact-item {
-          font-size: 11px;
-          color: #90caf9;
-          margin: 3px 0;
-        }
-        .dark-summary {
-          background: rgba(0, 188, 212, 0.1);
-          border-left: 3px solid #00bcd4;
-          padding: 15px;
-          margin-bottom: 20px;
-          font-size: 12px;
-          line-height: 1.5;
-        }
-        .dark-section {
+
+        .cyberpunk-header {
           margin-bottom: 25px;
+          text-align: center;
         }
-        .dark-section h2 {
-          font-size: 13px;
-          font-weight: 700;
-          text-transform: uppercase;
-          letter-spacing: 1px;
-          margin: 0 0 15px 0;
-          color: #00bcd4;
-        }
-        .dark-entry {
-          margin-bottom: 15px;
-          padding-bottom: 12px;
-          border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        }
-        .dark-entry:last-child {
-          border-bottom: none;
-        }
-        .entry-head {
-          display: flex;
-          justify-content: space-between;
-          gap: 10px;
-          margin-bottom: 5px;
-        }
-        .dark-entry h3 {
+
+        .header-border-top,
+        .header-border-bottom {
+          color: #00ffff;
           font-size: 12px;
+          margin-bottom: 10px;
+        }
+
+        .header-border-bottom {
+          margin-bottom: 0;
+          margin-top: 10px;
+        }
+
+        .header-content {
+          padding: 10px 0;
+        }
+
+        .name-glitch {
+          font-size: 24px;
+          font-weight: bold;
+          color: #00ffff;
           margin: 0;
-          font-weight: 700;
-          color: #fff;
+          text-shadow: 
+            -2px 0 #ff00ff,
+            2px 0 #00ff00,
+            0 0 10px rgba(0, 255, 255, 0.5);
         }
-        .entry-head span {
+
+        .title-line {
+          color: #ff00ff;
+          font-size: 13px;
+          margin-top: 8px;
+        }
+
+        .data-sections {
+          margin-bottom: 20px;
+        }
+
+        .contact-block,
+        .experience-block,
+        .education-block,
+        .skills-block,
+        .projects-block {
+          margin-bottom: 20px;
+          border: 1px solid #00ffff;
+          background: rgba(0, 255, 255, 0.02);
+        }
+
+        .block-header {
+          background: #1a1a2e;
+          border-bottom: 1px solid #00ffff;
+          padding: 8px 12px;
+          color: #00ffff;
+          font-size: 12px;
+          font-weight: bold;
+        }
+
+        .block-content {
+          padding: 12px;
+          font-size: 12px;
+        }
+
+        .data-line {
+          margin-bottom: 8px;
+          color: #00ff00;
+        }
+
+        .data-line.indent {
+          margin-left: 20px;
+          color: #90ee90;
           font-size: 11px;
-          color: #90caf9;
-          flex-shrink: 0;
         }
-        .dark-company, .dark-institution {
+
+        .entry-box {
+          margin-bottom: 12px;
+          padding-bottom: 8px;
+          border-bottom: 1px solid rgba(0, 255, 255, 0.2);
+        }
+
+        .entry-box:last-child {
+          border-bottom: none;
+          padding-bottom: 0;
+          margin-bottom: 0;
+        }
+
+        .entry-border {
+          color: #00ffff;
           font-size: 11px;
-          color: #80deea;
-          margin: 3px 0 5px 0;
+          margin-bottom: 4px;
         }
-        .dark-entry p:not(.dark-company):not(.dark-institution) {
+
+        .entry-title {
+          color: #00ff00;
+          font-weight: bold;
+          margin-bottom: 3px;
+        }
+
+        .entry-subtitle {
+          color: #ff00ff;
           font-size: 11px;
-          margin: 5px 0 0 0;
-          line-height: 1.4;
+          margin-bottom: 4px;
         }
-        .skill-row {
+
+        .entry-desc {
+          color: #90ee90;
+          font-size: 11px;
+        }
+
+        .project-box {
+          margin-bottom: 10px;
+          padding-bottom: 8px;
+          border-bottom: 1px solid rgba(0, 255, 0, 0.2);
+        }
+
+        .project-title {
+          color: #00ffff;
+          font-weight: bold;
+          margin-bottom: 3px;
+        }
+
+        .project-tech {
+          color: #00ff00;
+          font-size: 11px;
+          margin-bottom: 3px;
+        }
+
+        .project-desc {
+          color: #90ee90;
+          font-size: 11px;
+        }
+
+        .skill-line {
           display: flex;
-          justify-content: space-between;
-          padding: 8px 0;
+          align-items: center;
+          gap: 8px;
+          margin-bottom: 8px;
           font-size: 11px;
-          border-bottom: 1px solid rgba(255, 255, 255, 0.05);
         }
-        .skill-row strong {
-          font-weight: 700;
-          color: #fff;
+
+        .skill-bar {
+          color: #ff00ff;
         }
-        .skill-row span {
-          color: #b0bec5;
+
+        .neon-green {
+          color: #00ff00;
+        }
+
+        .neon-cyan {
+          color: #00ffff;
+        }
+
+        .neon-magenta {
+          color: #ff00ff;
+        }
+
+        .indent {
+          margin-left: 20px;
+        }
+
+        .footer-border {
+          text-align: center;
+          color: #00ffff;
+          font-size: 11px;
+          margin-top: 20px;
+          padding-top: 15px;
+          border-top: 1px solid #00ffff;
+        }
+
+        @media print {
+          .resume-content.cyberpunk-dark {
+            background: white;
+            color: #000;
+            padding: 20px;
+          }
+
+          .cyberpunk-container {
+            background: white;
+            border: 1px solid #000;
+            box-shadow: none;
+          }
+
+          .header-border-top,
+          .header-border-bottom,
+          .block-header,
+          .entry-border,
+          .footer-border,
+          .name-glitch,
+          .title-line,
+          .data-line,
+          .entry-title,
+          .entry-subtitle,
+          .project-title,
+          .project-tech,
+          .neon-green,
+          .neon-cyan,
+          .neon-magenta {
+            color: #000;
+          }
+
+          .contact-block,
+          .experience-block,
+          .education-block,
+          .skills-block,
+          .projects-block {
+            border-color: #000;
+            background: white;
+          }
+
+          .block-header {
+            border-bottom-color: #000;
+          }
         }
       `;
 
