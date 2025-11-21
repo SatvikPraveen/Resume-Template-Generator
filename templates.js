@@ -1061,8 +1061,23 @@ const TEMPLATES = {
         })}`;
       };
 
+      // Calculate experience level based on work history
+      const totalYears = data.work ? Math.round(data.work.length * 2.5) : 0;
+
       const html = `
         <div class="resume-content tech-terminal">
+          <!-- ASCII Art Header -->
+          <div class="ascii-header">
+            <pre>
+ ╔══════════════════════════════════════════════════════════╗
+ ║  &gt; ${(data.basics?.name || "DEVELOPER").padEnd(48)}║
+ ║  &gt; ${formatDate(data.work?.[data.work.length - 1]?.startDate, "").padEnd(
+   48
+ )}║
+ ╚══════════════════════════════════════════════════════════╝
+            </pre>
+          </div>
+
           <div class="terminal-emulator">
             <div class="terminal-header">
               <div class="terminal-buttons">
@@ -1070,67 +1085,113 @@ const TEMPLATES = {
                 <span class="btn-minimize"></span>
                 <span class="btn-maximize"></span>
               </div>
-              <div class="terminal-title">Terminal</div>
+              <div class="terminal-title">bash-5.0$ developer-profile</div>
             </div>
 
             <div class="terminal-content">
+              <!-- PROFILE COMMAND -->
               <div class="terminal-line">
                 <span class="prompt">$</span>
-                <span class="command">./resume --version</span>
+                <span class="command">whoami && echo "---"</span>
               </div>
               <div class="terminal-output">
-                <span class="output-text">${
+                <div class="output-line"><span class="output-text">${
                   data.basics?.name || "Professional"
-                } Resume v1.0</span>
+                }</span></div>
+                <div class="output-line" style="color: #00ff88; font-size: 11px;">
+                  ${
+                    data.basics?.label
+                      ? data.basics.label.split("|")[0].trim()
+                      : "Full Stack Developer"
+                  }
+                </div>
               </div>
 
+              <!-- CONTACT INFO COMMAND -->
               <div class="terminal-line">
                 <span class="prompt">$</span>
-                <span class="command">cat profile.txt</span>
+                <span class="command">cat /etc/profile.d/contact.sh</span>
               </div>
               <div class="terminal-output">
-                <div class="output-line"><span class="label">Name:</span> ${
-                  data.basics?.name || "Your Name"
-                }</div>
-                <div class="output-line"><span class="label">Title:</span> ${
-                  data.basics?.label
-                    ? data.basics.label.split("|")[0].trim()
-                    : "Professional"
-                }</div>
                 ${
                   data.basics?.email
-                    ? `<div class="output-line"><span class="label">Email:</span> ${data.basics.email}</div>`
+                    ? `<div class="output-line"><span class="label">📧 Email:</span> <span class="link">${data.basics.email}</span></div>`
                     : ""
                 }
                 ${
                   data.basics?.phone
-                    ? `<div class="output-line"><span class="label">Phone:</span> ${data.basics.phone}</div>`
+                    ? `<div class="output-line"><span class="label">📱 Phone:</span> <span class="link">${data.basics.phone}</span></div>`
+                    : ""
+                }
+                ${
+                  data.basics?.url
+                    ? `<div class="output-line"><span class="label">🔗 Web:</span> <span class="link">${data.basics.url}</span></div>`
+                    : ""
+                }
+                ${
+                  data.basics?.location
+                    ? `<div class="output-line"><span class="label">📍 Location:</span> <span class="value">${data.basics.location}</span></div>`
                     : ""
                 }
               </div>
 
+              <!-- SUMMARY COMMAND -->
+              ${
+                data.basics?.summary
+                  ? `
+                <div class="terminal-line">
+                  <span class="prompt">$</span>
+                  <span class="command">cat README.md</span>
+                </div>
+                <div class="terminal-output">
+                  <div class="output-line summary-text">"${data.basics.summary.substring(
+                    0,
+                    200
+                  )}"</div>
+                </div>
+              `
+                  : ""
+              }
+
+              <!-- WORK EXPERIENCE COMMAND -->
               ${
                 data.work && data.work.length
                   ? `
                 <div class="terminal-line">
                   <span class="prompt">$</span>
-                  <span class="command">history --experience</span>
+                  <span class="command">git log --all --oneline --graph</span>
                 </div>
                 <div class="terminal-output">
                   ${data.work
                     .map(
                       (job, idx) => `
                     <div class="output-block">
-                      <div class="output-line highlight">[${idx + 1}] ${
-                        job.position || "Position"
-                      }</div>
-                      <div class="output-line"><span class="label">Duration:</span> ${formatDate(
-                        job.startDate,
-                        job.endDate
-                      )}</div>
-                      <div class="output-line indent">${(job.summary || "")
-                        .substring(0, 150)
-                        .replace(/\n/g, " ")}...</div>
+                      <div class="output-line timeline-node">
+                        <span class="timeline-marker">●</span>
+                        <span class="highlight">${
+                          job.position || "Position"
+                        }</span>
+                      </div>
+                      <div class="output-line">
+                        <span class="label">Company:</span>
+                        <span class="value">${job.company || "Company"}</span>
+                      </div>
+                      <div class="output-line">
+                        <span class="label">Period:</span>
+                        <span class="value">${formatDate(
+                          job.startDate,
+                          job.endDate
+                        )}</span>
+                      </div>
+                      ${
+                        job.summary
+                          ? `<div class="output-line description">
+                        <span class="label">✓</span> ${job.summary
+                          .substring(0, 180)
+                          .replace(/\n/g, " ")}
+                      </div>`
+                          : ""
+                      }
                     </div>
                   `
                     )
@@ -1140,23 +1201,30 @@ const TEMPLATES = {
                   : ""
               }
 
+              <!-- EDUCATION COMMAND -->
               ${
                 data.education && data.education.length
                   ? `
                 <div class="terminal-line">
                   <span class="prompt">$</span>
-                  <span class="command">ls education/</span>
+                  <span class="command">ls -lah /usr/local/education/</span>
                 </div>
                 <div class="terminal-output">
+                  <div class="output-line">drwxr-xr-x  ${
+                    data.education.length
+                  }  root  root  ${
+                      data.education.length * 4
+                    }K  Nov 20 10:45</div>
                   ${data.education
                     .map(
-                      (edu) => `
-                    <div class="output-line">
-                      <span class="file-icon">📚</span> ${
-                        edu.studyType || "Degree"
-                      } - ${edu.area || "Field"} (${
+                      (edu, idx) => `
+                    <div class="output-line edu-item">
+                      <span class="file-icon">📚</span>
+                      <span class="label">${edu.studyType || "Degree"}</span>
+                      <span class="value">${edu.area || "Field"}</span>
+                      <span class="muted">(${
                         edu.institution || "Institution"
-                      })
+                      })</span>
                     </div>
                   `
                     )
@@ -1166,24 +1234,34 @@ const TEMPLATES = {
                   : ""
               }
 
+              <!-- SKILLS COMMAND -->
               ${
                 data.skills && data.skills.length
                   ? `
                 <div class="terminal-line">
                   <span class="prompt">$</span>
-                  <span class="command">cat skills.conf</span>
+                  <span class="command">source ~/.bashrc && echo \$SKILLS</span>
                 </div>
                 <div class="terminal-output">
                   ${data.skills
                     .map(
-                      (skill) => `
-                    <div class="output-line">
-                      <span class="label">[${skill.name}]</span>
-                      <span class="value">${
-                        Array.isArray(skill.keywords)
-                          ? skill.keywords.join(", ")
-                          : skill.keywords || ""
-                      }</span>
+                      (skill, idx) => `
+                    <div class="skill-category">
+                      <div class="output-line skill-header">
+                        <span class="skill-name">[${skill.name}]</span>
+                      </div>
+                      <div class="output-line skill-items">
+                        ${
+                          Array.isArray(skill.keywords)
+                            ? skill.keywords
+                                .map(
+                                  (kw) =>
+                                    `<span class="skill-badge">${kw}</span>`
+                                )
+                                .join("")
+                            : skill.keywords || ""
+                        }
+                      </div>
                     </div>
                   `
                     )
@@ -1193,29 +1271,49 @@ const TEMPLATES = {
                   : ""
               }
 
+              <!-- PROJECTS COMMAND -->
               ${
                 data.projects && data.projects.length
                   ? `
                 <div class="terminal-line">
                   <span class="prompt">$</span>
-                  <span class="command">find . -name "projects" -type d</span>
+                  <span class="command">find ~/projects -type f -name "*.md" | head -${
+                    data.projects.length
+                  }</span>
                 </div>
                 <div class="terminal-output">
                   ${data.projects
                     .map(
                       (proj, idx) => `
-                    <div class="output-block">
-                      <div class="output-line highlight">./projects/${
-                        proj.name
-                      }</div>
-                      <div class="output-line"><span class="label">tech:</span> ${
-                        Array.isArray(proj.keywords)
-                          ? proj.keywords.join(", ")
-                          : proj.keywords || ""
-                      }</div>
-                      <div class="output-line indent">${(proj.summary || "")
-                        .substring(0, 120)
-                        .replace(/\n/g, " ")}...</div>
+                    <div class="project-item">
+                      <div class="output-line project-name">
+                        <span class="project-icon">🚀</span>
+                        <span class="highlight">${proj.name || "Project"}</span>
+                      </div>
+                      ${
+                        proj.summary
+                          ? `<div class="output-line project-desc">
+                        ${proj.summary.substring(0, 200).replace(/\n/g, " ")}
+                      </div>`
+                          : ""
+                      }
+                      ${
+                        proj.keywords
+                          ? `<div class="output-line project-tech">
+                        <span class="tech-label">Stack:</span>
+                        ${
+                          Array.isArray(proj.keywords)
+                            ? proj.keywords
+                                .map(
+                                  (tech) =>
+                                    `<span class="tech-tag">${tech}</span>`
+                                )
+                                .join("")
+                            : proj.keywords
+                        }
+                      </div>`
+                          : ""
+                      }
                     </div>
                   `
                     )
@@ -1225,6 +1323,7 @@ const TEMPLATES = {
                   : ""
               }
 
+              <!-- FOOTER -->
               <div class="terminal-line">
                 <span class="prompt">$</span>
                 <span class="blink">_</span>
@@ -1236,33 +1335,58 @@ const TEMPLATES = {
 
       const css = `
         .resume-content.tech-terminal {
-          background: #0d1117;
-          color: #39ff14;
-          font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
-          padding: 20px;
+          background: #0a0e27;
+          color: #0fff50;
+          font-family: 'Fira Code', 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+          padding: 30px 20px;
           min-height: 100vh;
+          line-height: 1.5;
+        }
+
+        .ascii-header {
+          text-align: center;
+          margin-bottom: 30px;
+          color: #00ff88;
+          opacity: 0.8;
+          font-size: 11px;
+          font-weight: bold;
+        }
+
+        .ascii-header pre {
+          margin: 0;
+          letter-spacing: 1px;
         }
 
         .terminal-emulator {
-          background: #0d1117;
-          border: 2px solid #39ff14;
-          border-radius: 8px;
-          box-shadow: 0 0 20px rgba(57, 255, 20, 0.3), inset 0 0 20px rgba(57, 255, 20, 0.05);
+          background: linear-gradient(135deg, #0a0e27 0%, #161428 100%);
+          border: 2px solid #0fff50;
+          border-radius: 12px;
+          box-shadow: 
+            0 0 30px rgba(15, 255, 80, 0.25),
+            inset 0 0 30px rgba(15, 255, 80, 0.05),
+            0 0 60px rgba(0, 255, 136, 0.1);
           overflow: hidden;
+          animation: glowPulse 3s ease-in-out infinite;
+        }
+
+        @keyframes glowPulse {
+          0%, 100% { box-shadow: 0 0 30px rgba(15, 255, 80, 0.25), inset 0 0 30px rgba(15, 255, 80, 0.05), 0 0 60px rgba(0, 255, 136, 0.1); }
+          50% { box-shadow: 0 0 50px rgba(15, 255, 80, 0.35), inset 0 0 30px rgba(15, 255, 80, 0.1), 0 0 80px rgba(0, 255, 136, 0.2); }
         }
 
         .terminal-header {
-          background: #161b22;
-          border-bottom: 1px solid #39ff14;
-          padding: 8px 12px;
+          background: linear-gradient(90deg, #161428 0%, #1a1632 100%);
+          border-bottom: 1px solid #0fff50;
+          padding: 10px 15px;
           display: flex;
           align-items: center;
-          gap: 8px;
+          gap: 10px;
+          font-size: 11px;
         }
 
         .terminal-buttons {
           display: flex;
-          gap: 6px;
+          gap: 8px;
         }
 
         .terminal-buttons span {
@@ -1270,70 +1394,81 @@ const TEMPLATES = {
           height: 12px;
           border-radius: 50%;
           display: inline-block;
+          border: 1px solid rgba(255, 255, 255, 0.3);
         }
 
         .btn-close {
-          background: #ff6b6b;
+          background: #ff5555;
+          box-shadow: 0 0 10px rgba(255, 85, 85, 0.5);
         }
 
         .btn-minimize {
-          background: #ffd93d;
+          background: #ffaa00;
+          box-shadow: 0 0 10px rgba(255, 170, 0, 0.5);
         }
 
         .btn-maximize {
-          background: #6bcf7f;
+          background: #00ff88;
+          box-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
         }
 
         .terminal-title {
-          font-size: 12px;
-          margin-left: 10px;
-          color: #39ff14;
+          font-size: 11px;
+          margin-left: 12px;
+          color: #00ff88;
           flex: 1;
           text-align: center;
+          letter-spacing: 1px;
+          font-weight: bold;
         }
 
         .terminal-content {
-          padding: 20px;
-          font-size: 13px;
-          line-height: 1.6;
-          max-height: 80vh;
+          padding: 20px 25px;
+          font-size: 12px;
+          line-height: 1.7;
+          max-height: 85vh;
           overflow-y: auto;
+          background: #0a0e27;
         }
 
         .terminal-content::-webkit-scrollbar {
-          width: 8px;
+          width: 10px;
         }
 
         .terminal-content::-webkit-scrollbar-track {
-          background: #161b22;
+          background: rgba(15, 255, 80, 0.1);
         }
 
         .terminal-content::-webkit-scrollbar-thumb {
-          background: #39ff14;
-          border-radius: 4px;
+          background: #0fff50;
+          border-radius: 5px;
         }
 
         .terminal-line {
           display: flex;
-          gap: 8px;
-          margin-bottom: 12px;
-          align-items: center;
+          gap: 10px;
+          margin-bottom: 14px;
+          align-items: flex-start;
         }
 
         .prompt {
-          color: #39ff14;
+          color: #0fff50;
           font-weight: bold;
-          min-width: 20px;
+          min-width: 18px;
+          flex-shrink: 0;
         }
 
         .command {
-          color: #39ff14;
-          text-decoration: underline;
+          color: #0fff50;
+          text-decoration: none;
+          font-weight: 500;
+          letter-spacing: 0.5px;
         }
 
         .blink {
           animation: blink 1s infinite;
-          color: #39ff14;
+          color: #0fff50;
+          font-weight: bold;
         }
 
         @keyframes blink {
@@ -1342,72 +1477,218 @@ const TEMPLATES = {
         }
 
         .terminal-output {
-          margin-left: 28px;
-          margin-bottom: 16px;
-          padding-left: 12px;
-          border-left: 2px solid rgba(57, 255, 20, 0.3);
+          margin-left: 0;
+          margin-bottom: 18px;
+          padding-left: 18px;
+          border-left: 2px solid rgba(15, 255, 80, 0.4);
         }
 
         .output-line {
-          color: #39ff14;
-          margin-bottom: 6px;
+          color: #0fff50;
+          margin-bottom: 7px;
           word-break: break-word;
+          display: flex;
+          gap: 8px;
+          align-items: center;
         }
 
         .output-line.highlight {
           color: #00ffff;
           font-weight: bold;
+          text-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
         }
 
-        .output-line.indent {
-          margin-left: 20px;
+        .output-line.timeline-node {
+          color: #00ff88;
+          font-weight: bold;
+        }
+
+        .timeline-marker {
+          color: #00ff88;
+          font-size: 14px;
+        }
+
+        .output-line.description {
           color: #90ee90;
-          font-size: 12px;
+          font-size: 11px;
+          margin-left: 10px;
+        }
+
+        .output-line.summary-text {
+          color: #00ff88;
+          font-style: italic;
+          margin: 8px 0;
+        }
+
+        .output-line.edu-item {
+          color: #00ff88;
+          padding: 5px 0;
         }
 
         .output-block {
-          margin-bottom: 10px;
-          padding-bottom: 8px;
-          border-bottom: 1px solid rgba(57, 255, 20, 0.2);
+          margin-bottom: 14px;
+          padding-bottom: 10px;
+          border-bottom: 1px solid rgba(15, 255, 80, 0.2);
         }
 
         .output-text {
           color: #00ffff;
           font-weight: bold;
+          text-shadow: 0 0 8px rgba(0, 255, 255, 0.4);
         }
 
         .label {
-          color: #39ff14;
+          color: #0fff50;
           font-weight: bold;
+          min-width: fit-content;
         }
 
         .value {
+          color: #00ff88;
+        }
+
+        .link {
           color: #00ffff;
+          text-decoration: underline;
+          cursor: pointer;
+        }
+
+        .muted {
+          color: #666688;
+          font-size: 11px;
         }
 
         .file-icon {
+          margin-right: 4px;
+        }
+
+        .skill-category {
+          margin-bottom: 10px;
+          padding: 8px;
+          background: rgba(15, 255, 80, 0.05);
+          border-left: 2px solid #00ff88;
+        }
+
+        .skill-header {
+          color: #00ffff;
+          font-weight: bold;
+          text-shadow: 0 0 8px rgba(0, 255, 255, 0.3);
+        }
+
+        .skill-items {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 8px;
+          margin-top: 6px;
+        }
+
+        .skill-badge {
+          display: inline-block;
+          background: rgba(0, 255, 136, 0.1);
+          border: 1px solid #00ff88;
+          color: #00ff88;
+          padding: 3px 8px;
+          border-radius: 3px;
+          font-size: 11px;
+          font-weight: 500;
+        }
+
+        .skill-name {
+          color: #0fff50;
+          font-weight: bold;
+        }
+
+        .project-item {
+          background: rgba(0, 255, 255, 0.05);
+          border-left: 3px solid #00ffff;
+          padding: 10px;
+          margin-bottom: 12px;
+        }
+
+        .project-name {
+          color: #00ffff;
+          font-weight: bold;
+          font-size: 13px;
+          text-shadow: 0 0 10px rgba(0, 255, 255, 0.4);
+        }
+
+        .project-icon {
           margin-right: 6px;
+        }
+
+        .project-desc {
+          color: #90ee90;
+          font-size: 11px;
+          margin-left: 26px;
+          margin-top: 4px;
+        }
+
+        .project-tech {
+          color: #00ff88;
+          font-size: 11px;
+          margin-left: 26px;
+          margin-top: 6px;
+          display: flex;
+          flex-wrap: wrap;
+          gap: 6px;
+        }
+
+        .tech-label {
+          color: #0fff50;
+          font-weight: bold;
+        }
+
+        .tech-tag {
+          display: inline-block;
+          background: rgba(0, 255, 136, 0.1);
+          border: 1px solid #00ff88;
+          color: #00ff88;
+          padding: 2px 6px;
+          border-radius: 2px;
+          font-size: 10px;
         }
 
         @media print {
           .resume-content.tech-terminal {
             background: white;
             color: #000;
+            padding: 15px;
+          }
+
+          .ascii-header {
+            color: #000;
+            border: 1px solid #000;
+            padding: 10px;
           }
 
           .terminal-emulator {
             border: 1px solid #000;
             box-shadow: none;
+            animation: none;
+            background: white;
           }
 
           .terminal-header {
-            border-bottom-color: #000;
+            background: #f0f0f0;
+            border-bottom: 1px solid #000;
+          }
+
+          .terminal-buttons span {
+            border-color: #000;
+          }
+
+          .btn-close, .btn-minimize, .btn-maximize {
+            box-shadow: none;
+            border: 1px solid #000;
           }
 
           .terminal-content {
+            background: white;
+            color: #000;
             max-height: none;
           }
 
+          .terminal-title,
           .prompt,
           .command,
           .blink,
@@ -1415,15 +1696,34 @@ const TEMPLATES = {
           .output-text,
           .output-line,
           .output-line.highlight,
-          .output-line.indent,
+          .output-line.timeline-node,
+          .output-line.description,
           .label,
           .value,
-          .terminal-title {
-            color: #000;
+          .link,
+          .skill-category,
+          .skill-header,
+          .skill-badge,
+          .project-item {
+            color: #000 !important;
+            text-shadow: none !important;
+            background: transparent !important;
+            border-color: #000 !important;
+            box-shadow: none !important;
           }
 
-          .terminal-emulator {
-            background: white;
+          .skill-items {
+            gap: 4px;
+          }
+
+          .skill-badge {
+            background: white !important;
+            border: 1px solid #000 !important;
+          }
+
+          .tech-tag {
+            background: white !important;
+            border: 1px solid #000 !important;
           }
         }
       `;
