@@ -1304,7 +1304,19 @@ function renderCurrentTemplate() {
   const dataToRender = STATE.resumeData || SAMPLE_DATA;
   const result = renderTemplate(STATE.currentTemplate, dataToRender);
   // result is { html, css }
+
+  // Inject HTML
   container.innerHTML = result.html || "";
+
+  // Inject CSS by creating a style tag
+  let styleTag = document.getElementById("template-styles");
+  if (!styleTag) {
+    styleTag = document.createElement("style");
+    styleTag.id = "template-styles";
+    document.head.appendChild(styleTag);
+  }
+  styleTag.textContent = result.css || "";
+
   STATE.lastRender = result;
 }
 

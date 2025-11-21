@@ -789,8 +789,15 @@ body {
 
 /* ==================== PRINT STYLES ==================== */
 @media print {
+  * {
+    box-shadow: none !important;
+    border-radius: 0 !important;
+  }
+
   body {
-    background: white;
+    background: white !important;
+    margin: 0 !important;
+    padding: 0 !important;
   }
 
   .header,
@@ -799,8 +806,41 @@ body {
     display: none !important;
   }
 
+  .preview-section {
+    padding: 0 !important;
+    margin: 0 !important;
+    background: white !important;
+  }
+
   .resume-container {
-    box-shadow: none;
-    padding: 0;
+    background: white !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    min-height: unset !important;
+    max-width: 100% !important;
+    width: 100% !important;
+  }
+
+  .resume-content {
+    background: white !important;
+    color: black !important;
+    padding: 0.5in !important;
+    margin: 0 !important;
+    page-break-after: avoid !important;
+  }
+
+  /* Ensure resume content is black text on white background */
+  .resume-content * {
+    background: transparent !important;
+    color: inherit !important;
+  }
+
+  /* Hide any UI elements */
+  .action-btns,
+  .empty-state,
+  .section-header {
+    display: none !important;
   }
 }
