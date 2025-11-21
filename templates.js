@@ -869,7 +869,9 @@ const TEMPLATES = {
                 <span class="command">./resume --version</span>
               </div>
               <div class="terminal-output">
-                <span class="output-text">${data.basics?.name || "Professional"} Resume v1.0</span>
+                <span class="output-text">${
+                  data.basics?.name || "Professional"
+                } Resume v1.0</span>
               </div>
 
               <div class="terminal-line">
@@ -877,10 +879,24 @@ const TEMPLATES = {
                 <span class="command">cat profile.txt</span>
               </div>
               <div class="terminal-output">
-                <div class="output-line"><span class="label">Name:</span> ${data.basics?.name || "Your Name"}</div>
-                <div class="output-line"><span class="label">Title:</span> ${data.basics?.label ? data.basics.label.split('|')[0].trim() : "Professional"}</div>
-                ${data.basics?.email ? `<div class="output-line"><span class="label">Email:</span> ${data.basics.email}</div>` : ""}
-                ${data.basics?.phone ? `<div class="output-line"><span class="label">Phone:</span> ${data.basics.phone}</div>` : ""}
+                <div class="output-line"><span class="label">Name:</span> ${
+                  data.basics?.name || "Your Name"
+                }</div>
+                <div class="output-line"><span class="label">Title:</span> ${
+                  data.basics?.label
+                    ? data.basics.label.split("|")[0].trim()
+                    : "Professional"
+                }</div>
+                ${
+                  data.basics?.email
+                    ? `<div class="output-line"><span class="label">Email:</span> ${data.basics.email}</div>`
+                    : ""
+                }
+                ${
+                  data.basics?.phone
+                    ? `<div class="output-line"><span class="label">Phone:</span> ${data.basics.phone}</div>`
+                    : ""
+                }
               </div>
 
               ${
@@ -895,9 +911,16 @@ const TEMPLATES = {
                     .map(
                       (job, idx) => `
                     <div class="output-block">
-                      <div class="output-line highlight">[${idx + 1}] ${job.position || "Position"}</div>
-                      <div class="output-line"><span class="label">Duration:</span> ${formatDate(job.startDate, job.endDate)}</div>
-                      <div class="output-line indent">${(job.summary || "").substring(0, 150).replace(/\n/g, " ")}...</div>
+                      <div class="output-line highlight">[${idx + 1}] ${
+                        job.position || "Position"
+                      }</div>
+                      <div class="output-line"><span class="label">Duration:</span> ${formatDate(
+                        job.startDate,
+                        job.endDate
+                      )}</div>
+                      <div class="output-line indent">${(job.summary || "")
+                        .substring(0, 150)
+                        .replace(/\n/g, " ")}...</div>
                     </div>
                   `
                     )
@@ -919,7 +942,11 @@ const TEMPLATES = {
                     .map(
                       (edu) => `
                     <div class="output-line">
-                      <span class="file-icon">📚</span> ${edu.studyType || "Degree"} - ${edu.area || "Field"} (${edu.institution || "Institution"})
+                      <span class="file-icon">📚</span> ${
+                        edu.studyType || "Degree"
+                      } - ${edu.area || "Field"} (${
+                        edu.institution || "Institution"
+                      })
                     </div>
                   `
                     )
@@ -943,7 +970,9 @@ const TEMPLATES = {
                     <div class="output-line">
                       <span class="label">[${skill.name}]</span>
                       <span class="value">${
-                        Array.isArray(skill.keywords) ? skill.keywords.join(", ") : skill.keywords || ""
+                        Array.isArray(skill.keywords)
+                          ? skill.keywords.join(", ")
+                          : skill.keywords || ""
                       }</span>
                     </div>
                   `
@@ -966,11 +995,17 @@ const TEMPLATES = {
                     .map(
                       (proj, idx) => `
                     <div class="output-block">
-                      <div class="output-line highlight">./projects/${proj.name}</div>
-                      <div class="output-line"><span class="label">tech:</span> ${
-                        Array.isArray(proj.keywords) ? proj.keywords.join(", ") : proj.keywords || ""
+                      <div class="output-line highlight">./projects/${
+                        proj.name
                       }</div>
-                      <div class="output-line indent">${(proj.summary || "").substring(0, 120).replace(/\n/g, " ")}...</div>
+                      <div class="output-line"><span class="label">tech:</span> ${
+                        Array.isArray(proj.keywords)
+                          ? proj.keywords.join(", ")
+                          : proj.keywords || ""
+                      }</div>
+                      <div class="output-line indent">${(proj.summary || "")
+                        .substring(0, 120)
+                        .replace(/\n/g, " ")}...</div>
                     </div>
                   `
                     )
