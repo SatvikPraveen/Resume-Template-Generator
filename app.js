@@ -998,12 +998,12 @@ function parseProjects(text) {
   console.log(`[parseProjects] Found ${headers.length} project headers`);
 
   // For each header, extract techs and description
-    for (let i = 0; i < headers.length; i++) {
-      const header = headers[i];
+  for (let i = 0; i < headers.length; i++) {
+    const header = headers[i];
 
-      // Extract techs from the header line (between | and end of line, or until bullet)
-      let techs = header.techsRaw;
-      let description = "";    // IMPORTANT: techs might contain bullet on same line OR newline separates techs from description
+    // Extract techs from the header line (between | and end of line, or until bullet)
+    let techs = header.techsRaw;
+    let description = ""; // IMPORTANT: techs might contain bullet on same line OR newline separates techs from description
     // Handle bullet on same line first
     if (techs.includes("•")) {
       const bulletIndex = techs.indexOf("•");
