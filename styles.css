@@ -795,6 +795,10 @@ body {
     display: none !important;
   }
 
+  .preview-section .section-header {
+    display: none !important;
+  }
+
   .resume-container {
     box-shadow: none !important;
     border: none !important;
