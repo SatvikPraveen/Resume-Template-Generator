@@ -562,19 +562,17 @@ const TEMPLATES = {
           font-size: 18px;
           font-weight: 800;
           margin: 0 0 25px 0;
-          color: #1a1a1a;
+          color: white;
           position: relative;
           padding-bottom: 12px;
+          background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+          padding: 16px 20px;
+          border-radius: 8px;
+          margin-bottom: 25px;
         }
         .modern-block h2:after {
           content: '';
-          position: absolute;
-          bottom: 0;
-          left: 0;
-          width: 50px;
-          height: 4px;
-          background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
-          border-radius: 2px;
+          display: none;
         }
         .modern-card {
           margin-bottom: 20px;
