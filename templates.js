@@ -143,7 +143,6 @@ const TEMPLATES = {
               `
                 )
                 .join("")}
-                .join("")}
             </section>
           `
               : ""
