@@ -3674,11 +3674,19 @@ ${(
                 .map(
                   (proj) => `
                 <div class="academic-entry">
-                  <p class="entry-title"><strong>${proj.name || "Project"}</strong></p>
-                  ${proj.summary ? `<p class="entry-desc">${proj.summary}</p>` : ""}
+                  <p class="entry-title"><strong>${
+                    proj.name || "Project"
+                  }</strong></p>
+                  ${
+                    proj.summary
+                      ? `<p class="entry-desc">${proj.summary}</p>`
+                      : ""
+                  }
                   ${
                     proj.keywords && proj.keywords.length
-                      ? `<p class="entry-desc"><strong>Technologies:</strong> ${proj.keywords.join(", ")}</p>`
+                      ? `<p class="entry-desc"><strong>Technologies:</strong> ${proj.keywords.join(
+                          ", "
+                        )}</p>`
                       : ""
                   }
                 </div>
@@ -3967,6 +3975,7 @@ ${(
           background: #f8f9fa;
           padding: 20px;
           border-right: 3px solid #003366;
+          overflow-x: hidden;
         }
         .corp-header {
           margin-bottom: 20px;
@@ -3998,6 +4007,8 @@ ${(
           font-size: 10px;
           margin: 3px 0;
           color: #555;
+          word-break: break-word;
+          overflow-wrap: break-word;
         }
         .corp-skills {
           margin-bottom: 20px;
