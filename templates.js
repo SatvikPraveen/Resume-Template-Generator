@@ -2284,6 +2284,9 @@ ${(
           color: #222;
           max-width: 900px;
           margin: 0 auto;
+          background: #ffffff;
+          padding: 40px;
+          border-radius: 8px;
         }
         .swiss-header {
           margin-bottom: 30px;
