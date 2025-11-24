@@ -3964,7 +3964,7 @@ ${(
       const css = `
         .resume-content.corporate {
           display: grid;
-          grid-template-columns: 200px 1fr;
+          grid-template-columns: 220px 1fr;
           gap: 20px;
           font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
           background: #ffffff;
@@ -3973,7 +3973,7 @@ ${(
         }
         .corp-sidebar {
           background: #f8f9fa;
-          padding: 15px;
+          padding: 20px;
           border-right: 3px solid #003366;
           overflow-x: hidden;
         }
@@ -3983,13 +3983,13 @@ ${(
           padding-bottom: 15px;
         }
         .corp-header h1 {
-          font-size: 18px;
+          font-size: 20px;
           margin: 0 0 5px 0;
           color: #003366;
           font-weight: 700;
         }
         .corp-header p {
-          font-size: 11px;
+          font-size: 12px;
           color: #666;
           margin: 0;
         }
@@ -3997,7 +3997,7 @@ ${(
           margin-bottom: 20px;
         }
         .corp-contact h3, .corp-skills h3 {
-          font-size: 10px;
+          font-size: 11px;
           font-weight: 700;
           text-transform: uppercase;
           color: #003366;
@@ -4005,11 +4005,10 @@ ${(
         }
         .corp-contact p {
           font-size: 8px;
-          margin: 2px 0;
+          margin: 3px 0;
           color: #555;
           word-break: break-word;
           overflow-wrap: break-word;
-          line-height: 1.3;
         }
         .corp-skills {
           margin-bottom: 20px;
