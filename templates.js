@@ -1125,8 +1125,8 @@ const TEMPLATES = {
           <div class="ascii-header">
             <pre>
  ╔══════════════════════════════════════════════════════════╗
- ║  &gt; ${(data.basics?.name || "DEVELOPER").padEnd(48)}║
- ║  &gt; ${(data.basics?.phone || "Contact Info").padEnd(48)}║
+ ${(data.basics?.name || "DEVELOPER").padEnd(62)}
+ ${(data.basics?.phone || "Contact Info").padEnd(62)}
  ╚══════════════════════════════════════════════════════════╝
             </pre>
           </div>
