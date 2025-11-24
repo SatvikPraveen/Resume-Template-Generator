@@ -4004,7 +4004,7 @@ ${(
           margin: 0 0 8px 0;
         }
         .corp-contact p {
-          font-size: 8px;
+          font-size: 10px;
           margin: 3px 0;
           color: #555;
           word-break: break-word;
