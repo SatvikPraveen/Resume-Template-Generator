@@ -1124,14 +1124,14 @@ const TEMPLATES = {
           <!-- ASCII Art Header -->
           <div class="ascii-header">
             <pre>
- ╔══════════════════════════════════════════════════════════╗
- ${(data.basics?.name || "DEVELOPER").padEnd(62)}
- ${(
+╔══════════════════════════════════════════════════════════╗
+${(data.basics?.name || "DEVELOPER").padStart(30).padEnd(60)}
+${(
    data.basics?.label?.split("|")?.[0]?.trim() ||
    data.basics?.phone ||
    "Contact Info"
- ).padEnd(62)}
- ╚══════════════════════════════════════════════════════════╝
+ ).padStart(30).padEnd(60)}
+╚══════════════════════════════════════════════════════════╝
             </pre>
           </div>
 
@@ -1407,14 +1407,13 @@ const TEMPLATES = {
           opacity: 0.8;
           font-size: 11px;
           font-weight: bold;
-          display: flex;
-          justify-content: center;
         }
 
         .ascii-header pre {
-          margin: 0;
+          margin: 0 auto;
           letter-spacing: 1px;
           width: fit-content;
+          padding: 0 20px;
         }
 
         .terminal-emulator {
