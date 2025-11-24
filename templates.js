@@ -4004,11 +4004,12 @@ ${(
           margin: 0 0 8px 0;
         }
         .corp-contact p {
-          font-size: 10px;
+          font-size: 9px;
           margin: 3px 0;
           color: #555;
           word-break: break-word;
           overflow-wrap: break-word;
+          hyphens: auto;
         }
         .corp-skills {
           margin-bottom: 20px;
