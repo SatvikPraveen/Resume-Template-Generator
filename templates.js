@@ -1126,7 +1126,11 @@ const TEMPLATES = {
             <pre>
  ╔══════════════════════════════════════════════════════════╗
  ${(data.basics?.name || "DEVELOPER").padEnd(62)}
- ${(data.basics?.phone || "Contact Info").padEnd(62)}
+ ${(
+   data.basics?.label?.split("|")?.[0]?.trim() ||
+   data.basics?.phone ||
+   "Contact Info"
+ ).padEnd(62)}
  ╚══════════════════════════════════════════════════════════╝
             </pre>
           </div>
