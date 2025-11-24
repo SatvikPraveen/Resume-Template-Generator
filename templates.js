@@ -3666,6 +3666,31 @@ ${(
           }
 
           ${
+            data.projects && data.projects.length
+              ? `
+            <div class="academic-section">
+              <h2>Projects & Research</h2>
+              ${data.projects
+                .map(
+                  (proj) => `
+                <div class="academic-entry">
+                  <p class="entry-title"><strong>${proj.name || "Project"}</strong></p>
+                  ${proj.summary ? `<p class="entry-desc">${proj.summary}</p>` : ""}
+                  ${
+                    proj.keywords && proj.keywords.length
+                      ? `<p class="entry-desc"><strong>Technologies:</strong> ${proj.keywords.join(", ")}</p>`
+                      : ""
+                  }
+                </div>
+              `
+                )
+                .join("")}
+            </div>
+          `
+              : ""
+          }
+
+          ${
             data.basics?.email || data.basics?.phone
               ? `
             <div class="academic-footer">
