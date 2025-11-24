@@ -1127,10 +1127,12 @@ const TEMPLATES = {
 ╔══════════════════════════════════════════════════════════╗
 ${(data.basics?.name || "DEVELOPER").padStart(30).padEnd(60)}
 ${(
-   data.basics?.label?.split("|")?.[0]?.trim() ||
-   data.basics?.phone ||
-   "Contact Info"
- ).padStart(30).padEnd(60)}
+  data.basics?.label?.split("|")?.[0]?.trim() ||
+  data.basics?.phone ||
+  "Contact Info"
+)
+  .padStart(30)
+  .padEnd(60)}
 ╚══════════════════════════════════════════════════════════╝
             </pre>
           </div>
@@ -1953,6 +1955,9 @@ ${(
           color: #1a1a1a;
           max-width: 850px;
           margin: 0 auto;
+          background: #ffffff;
+          padding: 40px;
+          border-radius: 8px;
         }
         .formal-header {
           text-align: center;
