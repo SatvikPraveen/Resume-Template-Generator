@@ -1650,80 +1650,52 @@ const TEMPLATES = {
 
         @media print {
           .resume-content.tech-terminal {
-            background: white;
-            color: #000;
-            padding: 15px;
+            background: white !important;
+            padding: 0 !important;
+            margin: 0 !important;
           }
 
+          /* Hide terminal decorative chrome */
           .ascii-header {
-            color: #000;
-            border: 1px solid #000;
-            padding: 10px;
+            display: none !important;
           }
 
           .terminal-emulator {
-            border: 1px solid #000;
-            box-shadow: none;
-            animation: none;
-            background: white;
+            border: none !important;
+            box-shadow: none !important;
+            background: white !important;
+            border-radius: 0 !important;
           }
 
           .terminal-header {
-            background: #f0f0f0;
-            border-bottom: 1px solid #000;
-          }
-
-          .terminal-buttons span {
-            border-color: #000;
-          }
-
-          .btn-close, .btn-minimize, .btn-maximize {
-            box-shadow: none;
-            border: 1px solid #000;
+            display: none !important;
           }
 
           .terminal-content {
-            background: white;
-            color: #000;
-            max-height: none;
+            background: white !important;
+            padding: 0 !important;
+            max-height: none !important;
+            overflow: visible !important;
           }
 
-          .terminal-title,
           .prompt,
           .command,
-          .blink,
-          .terminal-output,
-          .output-text,
-          .output-line,
-          .output-line.highlight,
-          .output-line.timeline-node,
-          .output-line.description,
-          .label,
-          .value,
-          .link,
-          .skill-category,
-          .skill-header,
-          .skill-badge,
-          .project-item {
-            color: #000 !important;
-            text-shadow: none !important;
-            background: transparent !important;
-            border-color: #000 !important;
-            box-shadow: none !important;
+          .blink {
+            display: none !important;
           }
 
-          .skill-items {
-            gap: 4px;
+          .terminal-output {
+            margin: 0 !important;
+            padding-left: 0 !important;
+            border-left: none !important;
           }
 
-          .skill-badge {
-            background: white !important;
-            border: 1px solid #000 !important;
+          .output-line {
+            margin-bottom: 4pt !important;
           }
 
-          .tech-tag {
-            background: white !important;
-            border: 1px solid #000 !important;
+          .terminal-line {
+            margin-bottom: 6pt !important;
           }
         }
       `;
