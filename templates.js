@@ -3893,6 +3893,37 @@ ${(
             `
                 : ""
             }
+
+            ${
+              data.projects && data.projects.length
+                ? `
+              <section class="corp-section">
+                <h2>Projects</h2>
+                ${data.projects
+                  .map(
+                    (proj) => `
+                  <div class="corp-job">
+                    <h3>${proj.name || "Project"}</h3>
+                    ${
+                      proj.summary
+                        ? `<p class="job-desc">${proj.summary}</p>`
+                        : ""
+                    }
+                    ${
+                      proj.keywords && proj.keywords.length
+                        ? `<p class="job-desc"><strong>Technologies:</strong> ${proj.keywords.join(
+                            ", "
+                          )}</p>`
+                        : ""
+                    }
+                  </div>
+                `
+                  )
+                  .join("")}
+              </section>
+            `
+                : ""
+            }
           </div>
         </div>
       `;
@@ -3903,6 +3934,9 @@ ${(
           grid-template-columns: 220px 1fr;
           gap: 20px;
           font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+          background: #ffffff;
+          padding: 20px;
+          border-radius: 8px;
         }
         .corp-sidebar {
           background: #f8f9fa;
