@@ -155,10 +155,13 @@ const TEMPLATES = {
         .resume-content {
           font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
           line-height: 1.6;
-          color: #333;
+          color: #000;
+          background: linear-gradient(135deg, #8B6F47 0%, #A0826D 100%);
+          padding: 40px;
+          border-radius: 8px;
         }
         .resume-header {
-          border-bottom: 3px solid #2c3e50;
+          border-bottom: 3px solid #5D4E37;
           padding-bottom: 20px;
           margin-bottom: 30px;
         }
@@ -166,21 +169,22 @@ const TEMPLATES = {
           font-size: 28px;
           margin: 0 0 5px 0;
           font-weight: 700;
+          color: #000;
         }
         .job-title {
           font-size: 14px;
-          color: #666;
+          color: #1a1a1a;
           margin: 0 0 10px 0;
         }
         .contact-info {
           display: flex;
           gap: 15px;
           font-size: 12px;
-          color: #555;
+          color: #1a1a1a;
           flex-wrap: wrap;
         }
         .contact-info span {
-          border-right: 1px solid #ccc;
+          border-right: 1px solid #5D4E37;
           padding-right: 15px;
         }
         .contact-info span:last-child {
@@ -190,6 +194,7 @@ const TEMPLATES = {
           font-size: 13px;
           margin-top: 10px;
           line-height: 1.5;
+          color: #000;
         }
         .resume-section {
           margin-bottom: 25px;
@@ -197,9 +202,10 @@ const TEMPLATES = {
         .resume-section h2 {
           font-size: 16px;
           font-weight: 700;
-          border-bottom: 2px solid #2c3e50;
+          border-bottom: 2px solid #5D4E37;
           padding-bottom: 8px;
           margin-bottom: 15px;
+          color: #000;
         }
         .entry {
           margin-bottom: 15px;
@@ -214,21 +220,23 @@ const TEMPLATES = {
           font-size: 14px;
           margin: 0;
           font-weight: 700;
+          color: #000;
         }
         .date {
           font-size: 12px;
-          color: #888;
+          color: #1a1a1a;
           flex-shrink: 0;
         }
         .company, .institution {
           font-size: 13px;
-          color: #555;
+          color: #1a1a1a;
           margin: 3px 0 8px 0;
           font-style: italic;
         }
         .entry p {
           font-size: 12px;
           margin: 5px 0;
+          color: #000;
         }
         .skills-grid {
           display: grid;
@@ -237,21 +245,23 @@ const TEMPLATES = {
         }
         .skill-item {
           padding: 8px;
-          background: #f5f5f5;
+          background: rgba(255, 255, 255, 0.2);
           border-radius: 4px;
+          border: 1px solid #5D4E37;
         }
         .skill-item strong {
           font-size: 12px;
           display: block;
+          color: #000;
         }
         .skill-item p {
           font-size: 11px;
           margin: 3px 0 0 0;
-          color: #666;
+          color: #1a1a1a;
         }
         .project-tech {
           font-size: 11px;
-          color: #666;
+          color: #1a1a1a;
           margin: 5px 0 0 0;
           font-style: italic;
         }
