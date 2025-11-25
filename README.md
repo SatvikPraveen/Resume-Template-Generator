@@ -20,6 +20,12 @@ A powerful, locally-run web application that extracts data from PDF resumes and 
 
 ## 🎨 Template Showcase
 
+**All 12 templates are fully functional and optimized with:**
+- ✅ Project section support (displays project name, summary, and technologies)
+- ✅ Professional styling and layouts
+- ✅ Print-ready formatting
+- ✅ Responsive design considerations
+
 ### 1. **Tech** - Terminal/CLI Aesthetic
 
 Neon green terminal emulator with bash-style commands. Perfect for developers and engineers.
@@ -82,7 +88,7 @@ Professional standard layout. Always reliable.
 1. **Clone the repository**
 
 ```bash
-git clone https://github.com/yourusername/resume-template-generator.git
+git clone https://github.com/SatvikPraveen/resume-template-generator.git
 cd resume-template-generator
 ```
 
@@ -118,7 +124,7 @@ http://localhost:8000
 
 ```bash
 # Create or navigate to your repository
-git clone https://github.com/yourusername/resume-template-generator.git
+git clone https://github.com/SatvikPraveen/resume-template-generator.git
 cd resume-template-generator
 
 # Ensure you're on main branch
@@ -138,7 +144,7 @@ git checkout main
 After a few minutes, your site will be available at:
 
 ```
-https://yourusername.github.io/resume-template-generator
+https://SatvikPraveen.github.io/resume-template-generator
 ```
 
 ### Step 4: Update Configuration (Optional)
@@ -204,14 +210,15 @@ resume-template-generator/
 
 - Select desired template
 - Data flows into template's render function
-- HTML + CSS combined
-- Real-time preview displayed
+- HTML + CSS combined and injected into DOM
+- Real-time preview displayed with proper styling
+- All templates support project sections with technologies
 
 ### Phase 4: Export
 
-- **HTML** - Standalone file with embedded CSS
-- **JSON** - Structured data for other tools
-- **PDF** - Print-optimized version (no borders, clean layout)
+- **HTML** - Standalone file with embedded CSS and full formatting
+- **JSON** - Structured data following JSON Resume standard
+- **PDF** - Print-optimized version with clean layout and no borders
 
 ---
 
@@ -398,4 +405,4 @@ This project is licensed under the **MIT License** - see the LICENSE file for de
 
 **Made with ❤️ for job seekers everywhere**
 
-Last Updated: November 2025
+Last Updated: November 24, 2025
