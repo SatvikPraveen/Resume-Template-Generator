@@ -4,7 +4,7 @@
 
 A powerful, locally-run web application that extracts data from PDF resumes and renders them through multiple distinct template designs. No data leaves your device—all processing happens in your browser.
 
-> 🚀 **[Live Demo - Try it now!](https://satvikpraveen.github.io/resume-template-generator/)**
+> 🚀 **[Live Demo - Try it now!](https://satvikpraveen.github.io/Resume-Template-Generator/)**
 
 ---
 
