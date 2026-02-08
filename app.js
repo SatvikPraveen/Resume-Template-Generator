@@ -543,9 +543,9 @@ function identifySections(text) {
     {
       sectionName: "experience",
       // Matches: EXPERIENCE, PROFESSIONAL EXPERIENCE, WORK EXPERIENCE, VOLUNTEERING EXPERIENCE, etc.
-      // Using non-greedy and limiting to 1-3 words before EXPERIENCE
+      // Using \w+ to match all-caps headers like "PROFESSIONAL EXPERIENCE"
       pattern:
-        /(?:^|\n)\s*(?:(?:[A-Z][a-z]+\s+){0,3})?(?:EXPERIENCE|EMPLOYMENT|WORK\s+HISTORY|CAREER|E\s*X\s*P\s*E\s*R\s*I\s*E\s*N\s*C\s*E)\s*(?:\n|$)/gi,
+        /(?:^|\n)\s*(?:\w+\s+)*?(?:EXPERIENCE|EMPLOYMENT|WORK\s+HISTORY|CAREER|VOLUNTEERING|E\s*X\s*P\s*E\s*R\s*I\s*E\s*N\s*C\s*E)\s*(?:\n|$)/gi,
     },
     {
       sectionName: "projects",

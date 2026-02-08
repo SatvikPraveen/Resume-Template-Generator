@@ -153,10 +153,10 @@ class RobustResumeParser {
     // Strategy 1.5: Flexible pattern matching for compound headers
     // Matches: "PROFESSIONAL EXPERIENCE", "VOLUNTEERING EXPERIENCE", etc.
     const flexiblePatterns = [
-      { section: 'experience', pattern: /(?:^|\n)\s*(?:(?:[A-Z][a-z]+\s+){0,3})?(?:EXPERIENCE|EMPLOYMENT|WORK\s+HISTORY)\s*:?\s*(?:\n|$)/gi },
-      { section: 'skills', pattern: /(?:^|\n)\s*(?:(?:[A-Z][a-z]+\s+){0,2})?(?:SKILLS?|COMPETENCIES)\s*:?\s*(?:\n|$)/gi },
-      { section: 'education', pattern: /(?:^|\n)\s*(?:(?:[A-Z][a-z]+\s+){0,2})?(?:EDUCATION|ACADEMIC)\s*:?\s*(?:\n|$)/gi },
-      { section: 'projects', pattern: /(?:^|\n)\s*(?:(?:[A-Z][a-z]+\s+){0,2})?PROJECTS?\s*:?\s*(?:\n|$)/gi },
+      { section: 'experience', pattern: /(?:^|\n)\s*(?:\w+\s+)*?(?:EXPERIENCE|EMPLOYMENT|WORK\s+HISTORY|VOLUNTEERING)\s*:?\s*(?:\n|$)/gi },
+      { section: 'skills', pattern: /(?:^|\n)\s*(?:\w+\s+)*?(?:SKILLS?|COMPETENCIES)\s*:?\s*(?:\n|$)/gi },
+      { section: 'education', pattern: /(?:^|\n)\s*(?:\w+\s+)*?(?:EDUCATION|ACADEMIC)\s*:?\s*(?:\n|$)/gi },
+      { section: 'projects', pattern: /(?:^|\n)\s*(?:\w+\s+)*?PROJECTS?\s*:?\s*(?:\n|$)/gi },
     ];
 
     for (const { section, pattern } of flexiblePatterns) {
