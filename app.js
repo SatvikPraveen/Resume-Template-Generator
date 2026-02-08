@@ -692,7 +692,7 @@ function parseWorkExperience(text) {
   // Find jobs by looking for date patterns: "Month Year - Month Year" or "Month Year - Present"
   // Support both 2-digit (21) and 4-digit (2021) years
   const datePattern =
-    /([A-Z][a-z]+\.?\s+\d{2,4})\s*[-–—]\s*((?:[A-Z][a-z]+\.?\s+\d{2,4})|Present|present|Current|current)/gi;
+    /(\w+\.?\s+\d{2,4})\s*[-–—]\s*((?:\w+\.?\s+\d{2,4})|present|current)/gi;
 
   const dateMatches = [];
   let match;
@@ -811,7 +811,7 @@ function parseEducation(text) {
 
   // Support both 2-digit (21) and 4-digit (2021) years
   const dateRangePattern =
-    /([A-Z][a-z]+\.?\s+\d{2,4})\s*[-–—]\s*((?:[A-Z][a-z]+\.?\s+\d{2,4})|Present|present|Current|current)/gi;
+    /(\w+\.?\s+\d{2,4})\s*[-–—]\s*((?:\w+\.?\s+\d{2,4})|present|current)/gi;
   let dateMatch;
   const dateMatches = [];
 
