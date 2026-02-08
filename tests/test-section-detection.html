@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Section Detection Test</title>
+  <style>
+    body { font-family: monospace; padding: 20px; }
+    .test { background: #f0f0f0; padding: 10px; margin: 10px 0; }
+    .found { background: #d4edda; color: #155724; padding: 5px; margin: 2px; }
+    .notfound { background: #f8d7da; color: #721c24; padding: 5px; margin: 2px; }
+    pre { background: white; padding: 10px; }
+  </style>
+</head>
+<body>
+  <h1>Section Detection Debug Test</h1>
+  
+  <div class="test">
+    <h3>Test Resume Text:</h3>
+    <pre id="testText"></pre>
+  </div>
+
+  <div class="test">
+    <h3>Sections Found:</h3>
+    <div id="results"></div>
+  </div>
+
+  <script src="../src/parsers/robust-parser.js"></script>
+  <script src="../app.js"></script>
+  <script>
+    const testResume = `SATVIK PRAVEEN
++ 1 979 721 2039 | satvik.praveen_164@tamu.edu
+
+PROFESSIONAL SUMMARY
+Diligent and driven Graduate Student at Texas A&M University.
+
+PROFESSIONAL EXPERIENCE
+Software Engineer
+Google Inc
+Jan 2020 - Present
+Built scalable applications
+
+VOLUNTEERING EXPERIENCE  
+Volunteer Developer
+Red Cross
+Jun 2019 - Dec 2019
+Developed community platform
+
+EDUCATION
+Texas A&M University
+Master's in Computer Science
+2023 - 2025
+
+TECHNICAL SKILLS
+Python, JavaScript, React
+
+PROJECTS
+Resume Generator | React, Node.js
+Built this amazing tool`;
+
+    document.getElementById('testText').textContent = testResume;
+
+    // Test with current parser
+    console.log('=== Testing identifySections ===');
+    const sections = identifySections(testResume);
+    console.log('Sections found:', sections);
+    console.log('Section keys:', Object.keys(sections));
+
+    // Test with robust parser
+    console.log('\n=== Testing RobustResumeParser ===');
+    const parser = new RobustResumeParser();
+    const result = parser.parseResume(testResume);
+    console.log('Parsed result:', result);
+    console.log('Work entries:', result.work);
+
+    // Display results
+    const resultsDiv = document.getElementById('results');
+    let html = '<h4>Current Parser (identifySections):</h4>';
+    
+    if (Object.keys(sections).length === 0) {
+      html += '<div class="notfound">❌ No sections found!</div>';
+    } else {
+      for (const [key, value] of Object.entries(sections)) {
+        html += `<div class="found">✓ ${key}: ${value.substring(0, 100)}...</div>`;
+      }
+    }
+
+    html += '<h4>Robust Parser:</h4>';
+    html += `<div class="${result.work.length > 0 ? 'found' : 'notfound'}">
+      Work entries: ${result.work.length}
+    </div>`;
+    html += `<div class="${result.education.length > 0 ? 'found' : 'notfound'}">
+      Education entries: ${result.education.length}
+    </div>`;
+    html += `<div class="${result.skills.length > 0 ? 'found' : 'notfound'}">
+      Skills entries: ${result.skills.length}
+    </div>`;
+
+    resultsDiv.innerHTML = html;
+  </script>
+</body>
+</html>

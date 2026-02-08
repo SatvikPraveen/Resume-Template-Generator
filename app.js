@@ -543,22 +543,23 @@ function identifySections(text) {
     {
       sectionName: "experience",
       // Matches: EXPERIENCE, PROFESSIONAL EXPERIENCE, WORK EXPERIENCE, VOLUNTEERING EXPERIENCE, etc.
+      // Using non-greedy and limiting to 1-3 words before EXPERIENCE
       pattern:
-        /(?:^|\n)\s*(?:\w+\s+)*(?:E\s*X\s*P\s*E\s*R\s*I\s*E\s*N\s*C\s*E|EXPERIENCE|EMPLOYMENT|WORK\s+HISTORY|CAREER)\s*(?:\n|$)/gi,
+        /(?:^|\n)\s*(?:(?:[A-Z][a-z]+\s+){0,3})?(?:EXPERIENCE|EMPLOYMENT|WORK\s+HISTORY|CAREER|E\s*X\s*P\s*E\s*R\s*I\s*E\s*N\s*C\s*E)\s*(?:\n|$)/gi,
     },
     {
       sectionName: "projects",
       pattern:
-        /(?:^|\n)\s*(?:\w+\s+)?(?:P\s*R\s*O\s*J\s*E\s*C\s*T\s*S|PROJECTS|PORTFOLIO)\s*(?:\n|$)/gi,
+        /(?:^|\n)\s*(?:(?:[A-Z][a-z]+\s+){0,2})?(?:PROJECTS?|PORTFOLIO|P\s*R\s*O\s*J\s*E\s*C\s*T\s*S)\s*(?:\n|$)/gi,
     },
     {
       sectionName: "skills",
       pattern:
-        /(?:^|\n)\s*(?:\w+\s+)?(?:T\s*E\s*C\s*H\s*N\s*I\s*C\s*A\s*L\s+S\s*K\s*I\s*L\s*L\s*S|TECHNICAL\s+SKILLS|SKILLS|COMPETENCIES)\s*(?:\n|$)/gi,
+        /(?:^|\n)\s*(?:(?:[A-Z][a-z]+\s+){0,2})?(?:SKILLS?|COMPETENCIES|TECHNICAL\s+SKILLS|T\s*E\s*C\s*H\s*N\s*I\s*C\s*A\s*L\s+S\s*K\s*I\s*L\s*L\s*S)\s*(?:\n|$)/gi,
     },
     {
       sectionName: "summary",
-      pattern: /(?:^|\n)\s*(?:\w+\s+)?(?:SUMMARY|PROFILE|OBJECTIVE)\s*(?:\n|$)/gi,
+      pattern: /(?:^|\n)\s*(?:(?:[A-Z][a-z]+\s+){0,2})?(?:SUMMARY|PROFILE|OBJECTIVE)\s*(?:\n|$)/gi,
     },
     {
       sectionName: "certifications",
@@ -586,31 +587,46 @@ function identifySections(text) {
   // Sort by position in text
   headerMatches.sort((a, b) => a.index - b.index);
 
-  // Remove duplicates AND remove LANGUAGES if SKILLS exists (likely same section with spaced text)
-  const uniqueMatches = [];
-  const seenSections = new Set();
-
+  // Group sections - allow multiple instances of same section type (e.g., multiple experience sections)
+  const sectionGroups = {};
+  
   for (const match of headerMatches) {
-    // Skip LANGUAGES if we already have SKILLS - they're often in the same section in this resume
-    if (match.sectionName === "languages" && seenSections.has("skills")) {
+    // Skip LANGUAGES if we already have SKILLS
+    if (match.sectionName === "languages" && sectionGroups["skills"]) {
       continue;
     }
 
-    if (!seenSections.has(match.sectionName)) {
-      uniqueMatches.push(match);
-      seenSections.add(match.sectionName);
+    if (!sectionGroups[match.sectionName]) {
+      sectionGroups[match.sectionName] = [];
+    }
+    sectionGroups[match.sectionName].push(match);
+  }
+
+  console.log(
+    "Section groups:",
+    Object.entries(sectionGroups).map(([name, matches]) => `${name}(${matches.length})`)
+  );
+
+  // Create flat list preserving order but marking duplicates
+  const orderedMatches = [];
+  const seenPositions = new Set();
+  
+  for (const match of headerMatches) {
+    if (!seenPositions.has(match.index)) {
+      seenPositions.add(match.index);
+      orderedMatches.push(match);
     }
   }
 
   console.log(
     "Headers found:",
-    uniqueMatches.map((h) => `${h.sectionName}@${h.index}`)
+    orderedMatches.map((h) => `${h.sectionName}@${h.index}`)
   );
 
   // Log the index positions to help debug section boundaries
-  for (let i = 0; i < uniqueMatches.length; i++) {
-    const current = uniqueMatches[i];
-    const next = uniqueMatches[i + 1];
+  for (let i = 0; i < orderedMatches.length; i++) {
+    const current = orderedMatches[i];
+    const next = orderedMatches[i + 1];
     const startIdx = current.index + current.length;
     const endIdx = next ? next.index : text.length;
     const headerText = text
@@ -624,31 +640,13 @@ function identifySections(text) {
     );
   }
 
-  // Extract content between section headers
-  for (let i = 0; i < uniqueMatches.length; i++) {
-    const current = uniqueMatches[i];
-    const next = uniqueMatches[i + 1];
+  // Extract content between section headers - merge multiple instances of same section
+  for (let i = 0; i < orderedMatches.length; i++) {
+    const current = orderedMatches[i];
+    const next = orderedMatches[i + 1];
 
     // Start after the header
     let startIndex = current.index + current.length;
-
-    // For EXPERIENCE section, look back to capture job title/company if it's on same line or right before the date
-    // This handles cases where the job info is between the header and next section
-    if (current.sectionName === "experience" && next) {
-      // Look ahead to find if there's a line with a date pattern right after the header
-      const sectionPreview = text.substring(
-        startIndex,
-        Math.min(startIndex + 500, text.length)
-      );
-      // If the section starts with description text (not a job title), search backwards from next header
-      if (
-        !/^\s*[A-Z][A-Za-z\s&(),-]+\s*([-–—]|[0-9]+|$)/.test(sectionPreview)
-      ) {
-        // No immediate job title found, look in content before next section for job entries
-        // Include more context from before the next section
-        startIndex = current.index + current.length;
-      }
-    }
 
     // End at the next header (or end of text)
     const endIndex = next ? next.index : text.length;
@@ -659,8 +657,14 @@ function identifySections(text) {
     content = content.replace(/^\s+/, "");
 
     if (content.length > 0) {
-      sections[current.sectionName] = content;
-      console.log(`✓ ${current.sectionName}: ${content.substring(0, 80)}...`);
+      // Merge content if section already exists (e.g., multiple experience sections)
+      if (sections[current.sectionName]) {
+        sections[current.sectionName] += "\n\n" + content;
+        console.log(`✓ ${current.sectionName} (merged): ${content.substring(0, 80)}...`);
+      } else {
+        sections[current.sectionName] = content;
+        console.log(`✓ ${current.sectionName}: ${content.substring(0, 80)}...`);
+      }
     }
   }
 

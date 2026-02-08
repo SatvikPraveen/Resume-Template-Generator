@@ -153,10 +153,10 @@ class RobustResumeParser {
     // Strategy 1.5: Flexible pattern matching for compound headers
     // Matches: "PROFESSIONAL EXPERIENCE", "VOLUNTEERING EXPERIENCE", etc.
     const flexiblePatterns = [
-      { section: 'experience', pattern: /(?:^|\n)\s*(?:\w+\s+)*experience\s*:?\s*(?:\n|$)/gi },
-      { section: 'skills', pattern: /(?:^|\n)\s*(?:\w+\s+)*skills?\s*:?\s*(?:\n|$)/gi },
-      { section: 'education', pattern: /(?:^|\n)\s*(?:\w+\s+)*(?:education|academic)\s*:?\s*(?:\n|$)/gi },
-      { section: 'projects', pattern: /(?:^|\n)\s*(?:\w+\s+)*projects?\s*:?\s*(?:\n|$)/gi },
+      { section: 'experience', pattern: /(?:^|\n)\s*(?:(?:[A-Z][a-z]+\s+){0,3})?(?:EXPERIENCE|EMPLOYMENT|WORK\s+HISTORY)\s*:?\s*(?:\n|$)/gi },
+      { section: 'skills', pattern: /(?:^|\n)\s*(?:(?:[A-Z][a-z]+\s+){0,2})?(?:SKILLS?|COMPETENCIES)\s*:?\s*(?:\n|$)/gi },
+      { section: 'education', pattern: /(?:^|\n)\s*(?:(?:[A-Z][a-z]+\s+){0,2})?(?:EDUCATION|ACADEMIC)\s*:?\s*(?:\n|$)/gi },
+      { section: 'projects', pattern: /(?:^|\n)\s*(?:(?:[A-Z][a-z]+\s+){0,2})?PROJECTS?\s*:?\s*(?:\n|$)/gi },
     ];
 
     for (const { section, pattern } of flexiblePatterns) {
@@ -165,7 +165,7 @@ class RobustResumeParser {
       while ((match = pattern.exec(text)) !== null) {
         // Only add if we haven't already matched this section at this position
         const alreadyMatched = headerMatches.some(h => 
-          Math.abs(h.index - match.index) < 10 && h.section === section
+          Math.abs(h.index - match.index) < 10
         );
         
         if (!alreadyMatched) {
@@ -179,23 +179,37 @@ class RobustResumeParser {
       }
     }
 
-    // Sort by position and remove duplicates
+    // Sort by position and remove exact duplicates (same position)
     headerMatches.sort((a, b) => a.index - b.index);
-    const uniqueHeaders = this.deduplicateHeaders(headerMatches);
+    
+    // Remove duplicates at same position, but keep multiple instances of same section type
+    const uniqueByPosition = [];
+    const seenPositions = new Set();
+    
+    for (const header of headerMatches) {
+      if (!seenPositions.has(header.index)) {
+        seenPositions.add(header.index);
+        uniqueByPosition.push(header);
+      }
+    }
 
-    // Extract content between headers
-    for (let i = 0; i < uniqueHeaders.length; i++) {
-      const current = uniqueHeaders[i];
-      const next = uniqueHeaders[i + 1];
+    // Extract content between headers - merge multiple instances of same section
+    for (let i = 0; i < uniqueByPosition.length; i++) {
+      const current = uniqueByPosition[i];
+      const next = uniqueByPosition[i + 1];
       
       const startIdx = current.index + current.length;
       const endIdx = next ? next.index : text.length;
       
       const content = text.substring(startIdx, endIdx).trim();
       
-      // Store content (keep the first match for each section)
-      if (!sections[current.section] && content.length > 0) {
-        sections[current.section] = content;
+      // Merge content if section already exists
+      if (content.length > 0) {
+        if (sections[current.section]) {
+          sections[current.section] += '\n\n' + content;
+        } else {
+          sections[current.section] = content;
+        }
       }
     }
 
