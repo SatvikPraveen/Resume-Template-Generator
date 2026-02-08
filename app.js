@@ -17,6 +17,17 @@ function cleanAndNormalizeText(text) {
   return cleaned;
 }
 
+// ==================== PARSER CONFIGURATION ====================
+// Toggle to use robust parser when current parser fails
+const USE_ROBUST_PARSER = true;
+let robustParser = null;
+
+// Initialize robust parser if available
+if (typeof RobustResumeParser !== 'undefined' && USE_ROBUST_PARSER) {
+  robustParser = new RobustResumeParser();
+  console.log('[Parser] Robust parser initialized and ready as fallback');
+}
+
 // ==================== STATE MANAGEMENT ====================
 let STATE = {
   pdfFile: null,
@@ -359,6 +370,36 @@ function parseResumeText(text) {
   console.log(cleanedText);
   console.log("=== END CLEANED TEXT ===");
 
+  // Try current parsing method
+  let resumeData = parseResumeTextCurrent(cleanedText);
+  
+  // Check if parsing was successful (at least some data extracted)
+  const hasData = (
+    (resumeData.work && resumeData.work.length > 0) ||
+    (resumeData.education && resumeData.education.length > 0) ||
+    (resumeData.skills && resumeData.skills.length > 0) ||
+    (resumeData.projects && resumeData.projects.length > 0)
+  );
+
+  // If current parser failed and robust parser is available, use it
+  if (!hasData && robustParser && USE_ROBUST_PARSER) {
+    console.warn('[Parser] Current parser returned empty data. Trying robust parser...');
+    try {
+      resumeData = robustParser.parseResume(cleanedText);
+      console.log('[Parser] ✅ Robust parser extracted data successfully');
+      console.log('[Parser] Robust results:', resumeData);
+    } catch (error) {
+      console.error('[Parser] ❌ Robust parser also failed:', error);
+      // Fall back to current parser results (even if empty)
+    }
+  }
+
+  console.log("parseResumeText - Final resumeData:", resumeData);
+  return resumeData;
+}
+
+function parseResumeTextCurrent(cleanedText) {
+  // Original parsing logic (now as a separate function)
   // Fallback: local/robust parsing (primary method)
   const lines = cleanedText
     .split("\n")

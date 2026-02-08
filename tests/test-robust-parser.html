@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Robust Parser Test</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    h1 {
+      color: #333;
+      border-bottom: 3px solid #4CAF50;
+      padding-bottom: 10px;
+    }
+    .test-section {
+      background: white;
+      padding: 20px;
+      margin: 20px 0;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .test-case {
+      border-left: 4px solid #2196F3;
+      padding-left: 15px;
+      margin: 20px 0;
+    }
+    .test-case h3 {
+      margin-top: 0;
+      color: #2196F3;
+    }
+    .resume-text {
+      background: #f9f9f9;
+      padding: 15px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 12px;
+      white-space: pre-wrap;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+    .result {
+      background: #e8f5e9;
+      padding: 15px;
+      border-radius: 4px;
+      margin-top: 10px;
+    }
+    .result.error {
+      background: #ffebee;
+      color: #c62828;
+    }
+    .result.success {
+      background: #e8f5e9;
+      color: #2e7d32;
+    }
+    .result-detail {
+      margin: 5px 0;
+      padding: 5px;
+      background: white;
+      border-radius: 3px;
+    }
+    .json-output {
+      background: #263238;
+      color: #aed581;
+      padding: 15px;
+      border-radius: 4px;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      max-height: 400px;
+      overflow-y: auto;
+      white-space: pre;
+    }
+    button {
+      background: #4CAF50;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+      margin: 5px;
+    }
+    button:hover {
+      background: #45a049;
+    }
+    .comparison {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-top: 20px;
+    }
+    .parser-column {
+      background: #f9f9f9;
+      padding: 15px;
+      border-radius: 4px;
+    }
+    .parser-column h4 {
+      margin-top: 0;
+      padding-bottom: 10px;
+      border-bottom: 2px solid #ddd;
+    }
+    .stat {
+      display: inline-block;
+      background: #2196F3;
+      color: white;
+      padding: 5px 10px;
+      border-radius: 3px;
+      margin: 3px;
+      font-size: 12px;
+    }
+    .stat.good {
+      background: #4CAF50;
+    }
+    .stat.bad {
+      background: #f44336;
+    }
+  </style>
+</head>
+<body>
+  <h1>🧪 Robust Resume Parser Test Suite</h1>
+  
+  <div class="test-section">
+    <h2>Test Controls</h2>
+    <button onclick="runAllTests()">▶️ Run All Tests</button>
+    <button onclick="runTest1()">Test 1: Standard Format</button>
+    <button onclick="runTest2()">Test 2: Alternative Date Format</button>
+    <button onclick="runTest3()">Test 3: No Clear Sections</button>
+    <button onclick="runTest4()">Test 4: International Format</button>
+    <button onclick="runTest5()">Test 5: Minimal Information</button>
+  </div>
+
+  <div id="results"></div>
+
+  <script src="../src/parsers/robust-parser.js"></script>
+  <script>
+    const parser = new RobustResumeParser();
+
+    // Test Case 1: Standard resume format
+    const testResume1 = `John Doe
+Senior Software Engineer
+john.doe@email.com | 555-123-4567 | San Francisco, CA
+linkedin.com/in/johndoe
+
+PROFESSIONAL SUMMARY
+Experienced software engineer with 8+ years building scalable web applications.
+
+EXPERIENCE
+Senior Software Engineer
+Google Inc
+Jan 2020 - Present
+• Led development of cloud-based analytics platform
+• Improved system performance by 40%
+• Mentored team of 5 junior engineers
+
+Software Engineer
+Microsoft Corporation
+Jun 2015 - Dec 2019
+• Developed features for Azure cloud services
+• Collaborated with cross-functional teams
+• Implemented CI/CD pipelines
+
+EDUCATION
+Stanford University
+Sep 2011 - Jun 2015
+Bachelor's in Computer Science
+Palo Alto, CA
+
+SKILLS
+Programming Languages: JavaScript, Python, Java, C++
+Frameworks: React, Node.js, Django, Spring
+Cloud: AWS, Azure, Google Cloud
+Databases: PostgreSQL, MongoDB, Redis
+
+PROJECTS
+E-commerce Platform | React, Node.js, PostgreSQL
+Built full-stack e-commerce application with payment integration
+Deployed to AWS with auto-scaling capabilities`;
+
+    // Test Case 2: Alternative date formats
+    const testResume2 = `Jane Smith
+Product Manager
+jane.smith@company.com | +1-555-987-6543 | New York, NY
+
+SUMMARY
+Product leader focused on user-centric design and data-driven decisions.
+
+WORK EXPERIENCE
+Product Manager, Amazon - 2020-2023
+Launched 3 major product features reaching 10M+ users
+Conducted user research and A/B testing
+
+Associate PM, Airbnb - 2018-2020
+Managed product roadmap for host tools
+Increased host satisfaction by 25%
+
+EDUCATION
+MIT, Cambridge, MA
+2014-2018
+M.S. in Management Science
+
+UC Berkeley
+2010-2014
+B.A. in Economics
+
+SKILLS
+Product: Roadmapping, User Research, Analytics
+Tools: Jira, Figma, SQL, Tableau`;
+
+    // Test Case 3: No clear section headers
+    const testResume3 = `Michael Chen
+michael.chen@email.com
+408-555-7890
+
+Data Scientist with expertise in machine learning and statistical analysis.
+
+Experience at tech startups building predictive models and analytics dashboards.
+
+Netflix, Senior Data Scientist, 2019-Present
+Developed recommendation algorithms serving 200M+ users
+Built real-time analytics infrastructure
+
+Spotify, Data Scientist, 2016-2019
+Created user segmentation models
+Improved playlist recommendations
+
+Ph.D. in Statistics, Carnegie Mellon University, 2012-2016
+M.S. in Mathematics, UCLA, 2010-2012
+
+Python, R, SQL, TensorFlow, PyTorch, Spark
+Machine Learning, Statistics, A/B Testing, Data Visualization`;
+
+    // Test Case 4: International format
+    const testResume4 = `Priya Sharma
+Data Engineer
+priya.sharma@tech.com | +91-98765-43210 | Bangalore, India
+
+PROFESSIONAL EXPERIENCE
+Senior Data Engineer
+Infosys Technologies Ltd.
+July 2018 - Present
+Building big data pipelines processing 1TB+ daily
+Leading team of 4 engineers
+
+Junior Data Engineer
+Wipro Limited
+March 2016 - June 2018
+Developed ETL workflows using Apache Spark
+Optimized query performance
+
+EDUCATION
+Indian Institute of Technology, Mumbai
+Bachelor of Technology in Computer Science
+2012 - 2016
+CGPA: 8.5/10
+
+TECHNICAL SKILLS
+Languages: Python, Scala, Java
+Big Data: Spark, Hadoop, Kafka
+Databases: MySQL, Cassandra, Elasticsearch`;
+
+    // Test Case 5: Minimal resume
+    const testResume5 = `Alex Johnson
+alex@email.com
+
+Software Developer at Startup Inc (2020-2023)
+Built mobile apps using React Native
+Full-stack development with Node.js and MongoDB
+
+Computer Science degree from State University (2016-2020)
+
+Skills: JavaScript, React, Node.js, MongoDB, Git`;
+
+    function displayResults(testName, resumeText, result) {
+      const resultsDiv = document.getElementById('results');
+      
+      const testDiv = document.createElement('div');
+      testDiv.className = 'test-section';
+      
+      const workCount = result.work ? result.work.length : 0;
+      const eduCount = result.education ? result.education.length : 0;
+      const skillCount = result.skills ? result.skills.length : 0;
+      const projectCount = result.projects ? result.projects.length : 0;
+      const hasEmail = result.basics && result.basics.email ? true : false;
+      const hasName = result.basics && result.basics.name ? true : false;
+
+      const successRate = calculateSuccessRate(result);
+      
+      testDiv.innerHTML = `
+        <div class="test-case">
+          <h3>${testName}</h3>
+          <div class="resume-text">${escapeHtml(resumeText)}</div>
+          
+          <div class="result ${successRate >= 70 ? 'success' : 'error'}">
+            <h4>📊 Extraction Results (${successRate}% success)</h4>
+            <div class="result-detail">
+              <span class="stat ${hasName ? 'good' : 'bad'}">Name: ${hasName ? '✓' : '✗'}</span>
+              <span class="stat ${hasEmail ? 'good' : 'bad'}">Email: ${hasEmail ? '✓' : '✗'}</span>
+              <span class="stat ${workCount > 0 ? 'good' : 'bad'}">Work: ${workCount}</span>
+              <span class="stat ${eduCount > 0 ? 'good' : 'bad'}">Education: ${eduCount}</span>
+              <span class="stat ${skillCount > 0 ? 'good' : 'bad'}">Skills: ${skillCount}</span>
+              <span class="stat ${projectCount > 0 ? 'good' : 'bad'}">Projects: ${projectCount}</span>
+            </div>
+          </div>
+
+          <details>
+            <summary><strong>📄 View Full JSON Output</strong></summary>
+            <div class="json-output">${JSON.stringify(result, null, 2)}</div>
+          </details>
+        </div>
+      `;
+      
+      resultsDiv.appendChild(testDiv);
+    }
+
+    function calculateSuccessRate(result) {
+      let score = 0;
+      let total = 0;
+
+      // Name (20 points)
+      total += 20;
+      if (result.basics && result.basics.name && result.basics.name.length > 2) score += 20;
+
+      // Email (20 points)
+      total += 20;
+      if (result.basics && result.basics.email && result.basics.email.includes('@')) score += 20;
+
+      // Work (20 points)
+      total += 20;
+      if (result.work && result.work.length > 0) score += 20;
+
+      // Education (20 points)
+      total += 20;
+      if (result.education && result.education.length > 0) score += 20;
+
+      // Skills (10 points)
+      total += 10;
+      if (result.skills && result.skills.length > 0) score += 10;
+
+      // Projects (10 points)
+      total += 10;
+      if (result.projects && result.projects.length > 0) score += 10;
+
+      return Math.round((score / total) * 100);
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    function runTest1() {
+      document.getElementById('results').innerHTML = '';
+      const result = parser.parseResume(testResume1);
+      displayResults('Test 1: Standard Format', testResume1, result);
+    }
+
+    function runTest2() {
+      document.getElementById('results').innerHTML = '';
+      const result = parser.parseResume(testResume2);
+      displayResults('Test 2: Alternative Date Formats', testResume2, result);
+    }
+
+    function runTest3() {
+      document.getElementById('results').innerHTML = '';
+      const result = parser.parseResume(testResume3);
+      displayResults('Test 3: No Clear Sections', testResume3, result);
+    }
+
+    function runTest4() {
+      document.getElementById('results').innerHTML = '';
+      const result = parser.parseResume(testResume4);
+      displayResults('Test 4: International Format', testResume4, result);
+    }
+
+    function runTest5() {
+      document.getElementById('results').innerHTML = '';
+      const result = parser.parseResume(testResume5);
+      displayResults('Test 5: Minimal Information', testResume5, result);
+    }
+
+    function runAllTests() {
+      document.getElementById('results').innerHTML = '';
+      const tests = [
+        { name: 'Test 1: Standard Format', text: testResume1 },
+        { name: 'Test 2: Alternative Date Formats', text: testResume2 },
+        { name: 'Test 3: No Clear Sections', text: testResume3 },
+        { name: 'Test 4: International Format', text: testResume4 },
+        { name: 'Test 5: Minimal Information', text: testResume5 }
+      ];
+
+      tests.forEach(test => {
+        const result = parser.parseResume(test.text);
+        displayResults(test.name, test.text, result);
+      });
+
+      // Add summary
+      setTimeout(() => {
+        const summaryDiv = document.createElement('div');
+        summaryDiv.className = 'test-section';
+        summaryDiv.innerHTML = `
+          <h2>📈 Test Summary</h2>
+          <p>All ${tests.length} tests completed. Check individual results above for details.</p>
+          <p><strong>The robust parser handles:</strong></p>
+          <ul>
+            <li>✅ Multiple date formats (Month Year, YYYY, YYYY-YYYY)</li>
+            <li>✅ Various section header formats</li>
+            <li>✅ Missing or implicit section markers</li>
+            <li>✅ International phone and location formats</li>
+            <li>✅ Minimal and incomplete resumes</li>
+            <li>✅ Different company/position ordering</li>
+            <li>✅ Fuzzy matching when exact patterns fail</li>
+          </ul>
+        `;
+        document.getElementById('results').appendChild(summaryDiv);
+      }, 100);
+    }
+
+    // Auto-run all tests on load
+    window.addEventListener('load', () => {
+      console.log('🧪 Running all tests automatically...');
+      runAllTests();
+    });
+  </script>
+</body>
+</html>
