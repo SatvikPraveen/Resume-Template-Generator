@@ -873,13 +873,16 @@ function parseEducation(text) {
     const next = dateMatches[i + 1];
 
     // Extract institution: look backward from date for institution keywords
-    // Strategy: Find all institutions before this date, take the one closest to date
+    // Strategy: Find the line containing institution before the date
     let institution = "";
     const beforeDateText = text.substring(
-      Math.max(0, current.index - 200),
+      Math.max(0, current.index - 300),
       current.index
     );
-    // Find all institution occurrences
+    
+    // Split into lines and find the one with institution keywords
+    const linesBeforeDate = beforeDateText.split('\n').reverse();
+    
     const institutionKeywords = [
       "University",
       "College",
@@ -887,33 +890,23 @@ function parseEducation(text) {
       "School",
       "Academy",
     ];
-    let closestInstitution = null;
-    let closestIndex = -1;
-
-    for (const keyword of institutionKeywords) {
-      let searchStart = 0;
-      let idx;
-      // Find all occurrences of this keyword
-      while ((idx = beforeDateText.indexOf(keyword, searchStart)) !== -1) {
-        if (idx > closestIndex) {
-          closestIndex = idx;
-          // Extract institution name before this keyword
-          const beforeThis = beforeDateText.substring(0, idx);
-          // Look for the start of institution name (typically one or two words)
-          // Go backward to find capitalized word(s) - match SHORT names only
-          const nameMatch = beforeThis.match(
-            /([A-Z][A-Za-z&()]*(?:\s+[A-Z][A-Za-z&()]*)?)\s*$/
-          );
-          if (nameMatch) {
-            closestInstitution = nameMatch[1].trim() + " " + keyword;
+    
+    for (const line of linesBeforeDate) {
+      const trimmedLine = line.trim();
+      // Check if this line contains an institution keyword
+      for (const keyword of institutionKeywords) {
+        if (trimmedLine.toLowerCase().includes(keyword.toLowerCase())) {
+          // Take the full line as institution, removing leading bullets
+          institution = trimmedLine.replace(/^[●•]\s*/, '').trim();
+          // Extract just the institution part (before comma or location)
+          const commaIndex = institution.indexOf(',');
+          if (commaIndex > 0) {
+            institution = institution.substring(0, commaIndex).trim();
           }
+          break;
         }
-        searchStart = idx + 1;
       }
-    }
-
-    if (closestInstitution) {
-      institution = closestInstitution;
+      if (institution) break;
     }
 
     // Extract degree and area: look forward from date end for degree keywords
@@ -1013,12 +1006,21 @@ function parseEducation(text) {
     }
 
     // Only add if we found at least institution and dates
-    // AND: We must have found a degree (studyType should not be the default "Degree" unless we specifically set it)
-    // This filters out entries that are jobs, not education
+    // Accept any degree-related keywords, not just Master's/Bachelor's/PhD
     const isDegreeType =
       studyType === "Master's" ||
       studyType === "Bachelor's" ||
-      studyType === "PhD";
+      studyType === "PhD" ||
+      studyType.toLowerCase().includes('ms') ||
+      studyType.toLowerCase().includes('bs') ||
+      studyType.toLowerCase().includes('ba') ||
+      studyType.toLowerCase().includes('ma') ||
+      studyType.toLowerCase().includes('mba') ||
+      studyType.toLowerCase().includes('btech') ||
+      studyType.toLowerCase().includes('cert') ||
+      studyType.toLowerCase().includes('diploma') ||
+      studyType.toLowerCase().includes('degree') ||
+      degreeFound; // If we found ANY degree keyword, accept it
     
     // Convert 2-digit years to 4-digit (21 -> 2021, 23 -> 2023)
     const convertYear = (dateStr) => {
@@ -1135,6 +1137,10 @@ function parseSkills(text) {
 
 function parseProjects(text) {
   if (!text) return [];
+
+  console.log("=== PARSE PROJECTS ===");
+  console.log("Input text length:", text.length);
+  console.log("First 500 chars:", text.substring(0, 500));
 
   const projects = [];
 
