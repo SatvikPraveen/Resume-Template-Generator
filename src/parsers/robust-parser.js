@@ -496,7 +496,9 @@ class RobustResumeParser {
   }
 
   /**
-   * Extract jobs by identifying bullet points and their associated dates
+   * Extract jobs - handle two formats:
+   * 1. Professional: "Title, Company Date" then bullet achievements
+   * 2. Volunteering: "• Title: description Date"
    */
   extractJobsByParagraphs(text) {
     const jobs = [];
@@ -513,30 +515,11 @@ class RobustResumeParser {
       const line = lines[i].trim();
       if (!line) continue;
       
-      // Check if line starts with bullet (new job header)
       const startsWithBullet = /^[•\-●]/.test(line);
-      
-      // Check if this line contains a date
       const dateMatch = line.match(datePattern);
       
-      if (startsWithBullet) {
-        // Save previous job if exists and has a date
-        if (currentJob && currentJob.startDate) {
-          jobs.push(this.finalizeJob(currentJob));
-        }
-        
-        // Start new job with this line as header
-        const headerWithoutBullet = line.replace(/^[•\-●]\s*/, '').trim();
-        
-        currentJob = {
-          headerText: headerWithoutBullet,
-          startDate: '',
-          endDate: '',
-          descriptionLines: []
-        };
-        
-      } else if (dateMatch && currentJob) {
-        // This line has the date - extract it and add any text before/after to description
+      // Case 1: Line has date on it (professional format or volunteering date line)
+      if (dateMatch) {
         const beforeDate = line.substring(0, dateMatch.index).trim();
         const afterDate = line.substring(dateMatch.index + dateMatch[0].length).trim();
         
@@ -547,15 +530,60 @@ class RobustResumeParser {
           endDate = endDate.replace(/\b(\d{2})\b/, (m) => this.convertToFullYear(m));
         }
         
-        currentJob.startDate = startDate;
-        currentJob.endDate = endDate;
+        // Check if this is a job header line (no bullet) or just a date within description
+        if (!startsWithBullet && beforeDate && beforeDate.length > 10) {
+          // Professional format: "Title, Company Date"
+          // Save previous job
+          if (currentJob && currentJob.startDate) {
+            jobs.push(this.finalizeJob(currentJob));
+          }
+          
+          currentJob = {
+            headerText: beforeDate,
+            startDate: startDate,
+            endDate: endDate,
+            descriptionLines: afterDate ? [afterDate] : []
+          };
+        } else if (currentJob) {
+          // This is the date for a volunteering job already started
+          currentJob.startDate = startDate;
+          currentJob.endDate = endDate;
+          
+          // Add any text before/after date to description
+          const textWithoutBullet = beforeDate.replace(/^[•\-●]\s*/, '').trim();
+          if (textWithoutBullet) currentJob.descriptionLines.push(textWithoutBullet);
+          if (afterDate) currentJob.descriptionLines.push(afterDate);
+        }
         
-        // Add any text before/after date to description
-        if (beforeDate) currentJob.descriptionLines.push(beforeDate);
-        if (afterDate) currentJob.descriptionLines.push(afterDate);
+      } else if (startsWithBullet) {
+        // Bullet point - could be achievement or job header
+        const lineWithoutBullet = line.replace(/^[•\-●]\s*/, '').trim();
+        
+        // Check if this looks like a job header (has "at" or colon and is first bullet after saving job)
+        const looksLikeJobHeader = (lineWithoutBullet.toLowerCase().includes(' at ') || 
+                                    lineWithoutBullet.includes(':')) &&
+                                   (!currentJob || currentJob.startDate);
+        
+        if (looksLikeJobHeader) {
+          // Save previous job if it has dates
+          if (currentJob && currentJob.startDate) {
+            jobs.push(this.finalizeJob(currentJob));
+          }
+          
+          // Start new volunteering job
+          currentJob = {
+            headerText: lineWithoutBullet,
+            startDate: '',
+            endDate: '',
+            descriptionLines: []
+          };
+        } else if (currentJob) {
+          // Achievement bullet for current job
+          currentJob.descriptionLines.push(lineWithoutBullet);
+        }
         
       } else if (currentJob) {
-        // Regular description line - add to current job
+        // Regular text line - add to description
         currentJob.descriptionLines.push(line);
       }
     }
