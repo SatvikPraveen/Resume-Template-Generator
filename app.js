@@ -719,24 +719,43 @@ function parseWorkExperience(text) {
     const dateInfo = dateMatches[i];
     const nextDateInfo = dateMatches[i + 1];
 
-    // Find the header by working BACKWARDS from the date
-    // The header consists of the 1-2 lines immediately before the date
-    const linesBefore = text.substring(0, dateInfo.index);
-    const headerLines = linesBefore
-      .split("\n")
-      .reverse() // Reverse to find the last lines before date
-      .map((l) => l.trim())
-      .filter((l) => l.length > 0);
+    // Get the full line containing the date (might have position on same line)
+    const textBeforeDate = text.substring(0, dateInfo.index);
+    const lines = textBeforeDate.split('\n');
+    const dateLineStart = textBeforeDate.lastIndexOf('\n') + 1;
+    const fullDateLine = text.substring(dateLineStart, dateInfo.endIndex + 50).split('\n')[0];
 
-    // Take first 2 non-empty lines (they may be position and company, or position (company))
     let position = "";
     let company = "";
 
-    if (headerLines.length >= 2) {
-      position = headerLines[1]; // Second-to-last non-empty line
-      company = headerLines[0]; // Last non-empty line before date
-    } else if (headerLines.length === 1) {
-      position = headerLines[0]; // Only one line
+    // Check if position is on the same line as date (volunteering format: "● Position text    Date")
+    const beforeDateOnSameLine = fullDateLine.substring(0, fullDateLine.indexOf(dateInfo.fullDate)).trim();
+    
+    if (beforeDateOnSameLine.length > 0) {
+      // Position is on same line as date (volunteering format)
+      position = beforeDateOnSameLine.replace(/^[●•]\s*/, '').trim();
+      company = ""; // No separate company line
+    } else {
+      // Position/company are on lines BEFORE the date (professional experience format)
+      const headerLines = lines
+        .slice(-3) // Get last 3 lines before date
+        .map(l => l.trim())
+        .filter(l => l.length > 0 && !l.startsWith('●') && !l.startsWith('•'));
+
+      if (headerLines.length >= 1) {
+        // Last non-empty line before date is usually "Position, Company, Location"
+        const lastLine = headerLines[headerLines.length - 1];
+        
+        // Try to split position and company if comma-separated
+        if (lastLine.includes(',')) {
+          const parts = lastLine.split(',').map(p => p.trim());
+          position = parts[0];
+          company = parts.slice(1).join(', ');
+        } else {
+          position = lastLine;
+          company = headerLines.length >= 2 ? headerLines[headerLines.length - 2] : '';
+        }
+      }
     }
 
     // Get text AFTER the date (description)
@@ -744,32 +763,31 @@ function parseWorkExperience(text) {
     let descEnd = nextDateInfo ? nextDateInfo.index : text.length;
     let description = text.substring(descStart, descEnd).trim();
 
-    // Strip out the next job's position/company header if present
+    // Remove the next job's header from this job's description
     if (nextDateInfo) {
-      // Extract text before next date and find the header lines (non-bullet lines at the end)
       const beforeNextDate = text.substring(0, nextDateInfo.index);
-      const allLines = beforeNextDate.split("\n");
-
-      // Find header lines working backwards from the end
+      const allLines = beforeNextDate.split('\n');
+      
+      // Find non-bullet lines at the end (these are next job's header)
       const nextJobHeaderLines = [];
       for (let j = allLines.length - 1; j >= 0; j--) {
         const line = allLines[j].trim();
         if (line.length === 0) {
-          // Stop at blank line if we already found header lines
           if (nextJobHeaderLines.length > 0) break;
-        } else if (!line.startsWith("•")) {
-          // Non-bullet line is likely part of next job's header
+        } else if (!line.startsWith('●') && !line.startsWith('•')) {
           nextJobHeaderLines.unshift(line);
-          if (nextJobHeaderLines.length >= 2) break; // Only need position and company
+          if (nextJobHeaderLines.length >= 2) break;
+        } else {
+          break; // Hit a bullet point, stop
         }
       }
 
-      // Remove these header lines from the description
+      // Remove these lines from description
       if (nextJobHeaderLines.length > 0) {
-        const headerText = nextJobHeaderLines.join("\n");
-        if (description.includes(headerText)) {
-          description = description.replace(headerText, "").trim();
+        for (const headerLine of nextJobHeaderLines) {
+          description = description.replace(headerLine, '');
         }
+        description = description.trim();
       }
     }
 
