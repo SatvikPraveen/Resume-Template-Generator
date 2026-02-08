@@ -20,12 +20,13 @@ function cleanAndNormalizeText(text) {
 // ==================== PARSER CONFIGURATION ====================
 // Toggle to use robust parser when current parser fails
 const USE_ROBUST_PARSER = true;
+const USE_ROBUST_AS_PRIMARY = true; // Use robust parser as primary
 let robustParser = null;
 
 // Initialize robust parser if available
 if (typeof RobustResumeParser !== 'undefined' && USE_ROBUST_PARSER) {
   robustParser = new RobustResumeParser();
-  console.log('[Parser] Robust parser initialized and ready as fallback');
+  console.log('[Parser] Robust parser initialized' + (USE_ROBUST_AS_PRIMARY ? ' as PRIMARY' : ' as fallback'));
 }
 
 // ==================== STATE MANAGEMENT ====================
@@ -370,7 +371,20 @@ function parseResumeText(text) {
   console.log(cleanedText);
   console.log("=== END CLEANED TEXT ===");
 
-  // Try current parsing method
+  // USE ROBUST PARSER AS PRIMARY if enabled
+  if (USE_ROBUST_AS_PRIMARY && robustParser) {
+    console.log('[Parser] Using RobustResumeParser as PRIMARY');
+    try {
+      const resumeData = robustParser.parseResume(cleanedText);
+      console.log('[Parser] ✅ Robust parser results:', resumeData);
+      return resumeData;
+    } catch (error) {
+      console.error('[Parser] ❌ Robust parser failed, falling back to current parser:', error);
+    }
+  }
+
+  // Fallback: Try current parsing method
+  console.log('[Parser] Using current parser');
   let resumeData = parseResumeTextCurrent(cleanedText);
   
   // Check if parsing was successful (at least some data extracted)
@@ -381,8 +395,8 @@ function parseResumeText(text) {
     (resumeData.projects && resumeData.projects.length > 0)
   );
 
-  // If current parser failed and robust parser is available, use it
-  if (!hasData && robustParser && USE_ROBUST_PARSER) {
+  // If current parser failed and robust parser is available as fallback, use it
+  if (!hasData && robustParser && USE_ROBUST_PARSER && !USE_ROBUST_AS_PRIMARY) {
     console.warn('[Parser] Current parser returned empty data. Trying robust parser...');
     try {
       resumeData = robustParser.parseResume(cleanedText);
