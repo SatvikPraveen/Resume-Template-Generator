@@ -683,6 +683,10 @@ function identifySections(text) {
 function parseWorkExperience(text) {
   if (!text) return [];
 
+  console.log("=== PARSE WORK EXPERIENCE ===");
+  console.log("Input text length:", text.length);
+  console.log("First 500 chars:", text.substring(0, 500));
+
   const jobs = [];
 
   // Find jobs by looking for date patterns: "Month Year - Month Year" or "Month Year - Present"
@@ -701,7 +705,13 @@ function parseWorkExperience(text) {
     });
   }
 
-  if (dateMatches.length === 0) return [];
+  console.log("Date matches found:", dateMatches.length);
+  dateMatches.forEach((d, i) => console.log(`  ${i+1}. "${d.fullDate}"`));
+
+  if (dateMatches.length === 0) {
+    console.log("❌ No work experience dates found");
+    return [];
+  }
 
   // Extract job info for each date
   for (let i = 0; i < dateMatches.length; i++) {
@@ -777,6 +787,10 @@ function parseWorkExperience(text) {
 function parseEducation(text) {
   if (!text) return [];
 
+  console.log("=== PARSE EDUCATION ===");
+  console.log("Input text length:", text.length);
+  console.log("First 500 chars:", text.substring(0, 500));
+
   const education = [];
 
   // Debug: log the actual text being parsed
@@ -812,6 +826,11 @@ function parseEducation(text) {
   dateMatches.forEach((dm, i) => {
     console.log(`  Date ${i + 1}: "${dm.fullMatch}" at index ${dm.index}`);
   });
+
+  if (dateMatches.length === 0) {
+    console.log("❌ No education dates found");
+    return [];
+  }
 
   // Process each date range found
   for (let i = 0; i < dateMatches.length; i++) {
