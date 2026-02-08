@@ -75,6 +75,30 @@ class RobustResumeParser {
   }
 
   /**
+   * Convert 2-digit year to 4-digit year
+   * 00-30 → 2000-2030, 31-99 → 1931-1999
+   */
+  convertToFullYear(yearStr) {
+    // If already 4 digits, return as-is
+    if (/^\d{4}$/.test(yearStr)) {
+      return yearStr;
+    }
+    
+    // Extract just the digits
+    const match = yearStr.match(/\d{2}/);
+    if (!match) return yearStr;
+    
+    const twoDigit = parseInt(match[0], 10);
+    
+    // Assume 00-30 is 2000-2030, 31-99 is 1931-1999
+    if (twoDigit <= 30) {
+      return '20' + match[0];
+    } else {
+      return '19' + match[0];
+    }
+  }
+
+  /**
    * Main parsing entry point with fallback strategies
    */
   parseResume(text) {
@@ -476,29 +500,46 @@ class RobustResumeParser {
   }
 
   /**
-   * Find all date ranges in text
+   * Find all date ranges in text - ONLY at end of lines (job headers)
    */
   findDateRanges(text) {
     const ranges = [];
+    const lines = text.split('\n');
     
-    // Pattern: "Start - End" or "Start - Present"
+    // Pattern: "Start - End" or "Start - Present" at END of line
     const rangePatterns = [
-      /([A-Z][a-z]+\.?\s+\d{4})\s*[-–—]\s*((?:[A-Z][a-z]+\.?\s+\d{4})|Present|Current)/gi,
-      /(\d{4})\s*[-–—]\s*(\d{4}|Present|Current)/gi,
-      /(\d{1,2}\/\d{4})\s*[-–—]\s*(\d{1,2}\/\d{4}|Present|Current)/gi,
+      /([A-Z][a-z]+\.?\s+\d{2,4})\s*[-–—]\s*((?:[A-Z][a-z]+\.?\s+\d{2,4})|Present|Current)\s*$/gi,
+      /(\d{2,4})\s*[-–—]\s*(\d{2,4}|Present|Current)\s*$/gi,
+      /(\d{1,2}\/\d{2,4})\s*[-–—]\s*(\d{1,2}\/\d{2,4}|Present|Current)\s*$/gi,
     ];
 
-    for (const pattern of rangePatterns) {
-      let match;
-      pattern.lastIndex = 0;
-      while ((match = pattern.exec(text)) !== null) {
-        ranges.push({
-          full: match[0],
-          start: match[1],
-          end: match[2],
-          index: match.index
-        });
+    let currentIndex = 0;
+    for (const line of lines) {
+      for (const pattern of rangePatterns) {
+        pattern.lastIndex = 0;
+        const match = pattern.exec(line);
+        if (match) {
+          // Convert 2-digit years to 4-digit
+          let startDate = match[1];
+          let endDate = match[2];
+          
+          // Handle "April 21" → "April 2021"
+          startDate = startDate.replace(/\b(\d{2})\b/, (m) => this.convertToFullYear(m));
+          if (!/present|current/i.test(endDate)) {
+            endDate = endDate.replace(/\b(\d{2})\b/, (m) => this.convertToFullYear(m));
+          }
+          
+          ranges.push({
+            full: match[0],
+            start: startDate,
+            end: endDate,
+            index: currentIndex + match.index,
+            lineText: line.trim()
+          });
+          break; // Only one date range per line
+        }
       }
+      currentIndex += line.length + 1; // +1 for newline
     }
 
     return ranges;
@@ -514,36 +555,47 @@ class RobustResumeParser {
       const dateInfo = dateRanges[i];
       const nextDate = dateRanges[i + 1];
       
-      // Extract header (position/company) before date
-      const beforeDate = text.substring(Math.max(0, dateInfo.index - 200), dateInfo.index);
-      const headerLines = beforeDate.split('\n')
-        .map(l => l.trim())
-        .filter(l => l.length > 0)
-        .reverse()
-        .slice(0, 3); // Take last 3 lines before date
-
-      let position = headerLines[1] || '';
-      let company = headerLines[0] || '';
-
-      // If company looks like a position, swap them
-      if (this.looksLikeJobTitle(position) && !this.looksLikeJobTitle(company)) {
-        [position, company] = [company, position];
+      // The lineText has the full header line with the date at the end
+      // Remove the date to get just position/company
+      const headerLine = dateInfo.lineText.replace(dateInfo.full, '').trim();
+      
+      // Parse position and company from header
+      // Format: "Position, Company" or "Position at Company" or just "Position, Location"
+      let position = '';
+      let company = '';
+      
+      if (headerLine.includes(',')) {
+        const parts = headerLine.split(',').map(p => p.trim());
+        position = parts[0] || '';
+        company = parts.slice(1).join(', ').trim();
+      } else if (headerLine.toLowerCase().includes(' at ')) {
+        const parts = headerLine.split(/\s+at\s+/i);
+        position = parts[0].trim();
+        company = parts[1].trim();
+      } else {
+        // Whole line is position
+        position = headerLine;
+        company = '';
       }
 
       // Extract description after date
       const descStart = dateInfo.index + dateInfo.full.length;
-      const descEnd = nextDate ? nextDate.index : text.length;
+      const descEnd = nextDate ? nextDate.index - 100 : text.length; // Leave buffer for next header
       let description = text.substring(descStart, descEnd).trim();
 
-      // Remove next job's header from description
-      if (nextDate) {
-        const lines = description.split('\n');
-        // Remove last few non-bullet lines (likely next job's header)
-        while (lines.length > 0 && !lines[lines.length - 1].startsWith('•')) {
-          lines.pop();
+      // Clean up: remove lines that look like next job's header
+      const descLines = description.split('\n');
+      const cleanedLines = [];
+      for (const line of descLines) {
+        const trimmed = line.trim();
+        // Stop if we hit a line that looks like a new job header (not a bullet, has comma or "at")
+        if (!trimmed.startsWith('•') && !trimmed.startsWith('-') && 
+            (trimmed.match(/,.*,/) || trimmed.toLowerCase().includes(' at '))) {
+          break;
         }
-        description = lines.join('\n');
+        cleanedLines.push(line);
       }
+      description = cleanedLines.join('\n');
 
       jobs.push({
         position: position,
