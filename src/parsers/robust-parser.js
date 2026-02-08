@@ -501,54 +501,93 @@ class RobustResumeParser {
   extractJobsByParagraphs(text) {
     const jobs = [];
     
-    // Find all lines with date ranges
-    const datePattern = /([A-Z][a-z]+\.?\s+\d{2,4})\s*[-–—]\s*((?:[A-Z][a-z]+\.?\s+\d{2,4})|Present|Current)/gi;
-    const lines = text.split('\n');
-    const jobBlocks = [];
+    // Remove section headers (all caps lines that are section names, not job titles)
+    const cleanedText = text.replace(/^(PROFESSIONAL EXPERIENCE|VOLUNTEERING EXPERIENCE|WORK EXPERIENCE|EMPLOYMENT HISTORY)\s*$/gm, '');
     
-    let currentBlock = [];
-    let blockHasDate = false;
+    const lines = cleanedText.split('\n');
+    const datePattern = /([A-Z][a-z]+\.?\s+\d{2,4})\s*[-–—]\s*((?:[A-Z][a-z]+\.?\s+\d{2,4})|Present|Current)/i;
+    
+    let currentJob = null;
     
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i].trim();
+      if (!line) continue;
       
-      // Check if this line has a date
-      datePattern.lastIndex = 0;
-      const hasDate = datePattern.test(line);
+      // Check if this line contains a date
+      const dateMatch = line.match(datePattern);
       
-      if (hasDate && currentBlock.length > 0 && blockHasDate) {
-        // Save previous block and start new one
-        jobBlocks.push(currentBlock.join('\n'));
-        currentBlock = [line];
-        blockHasDate = true;
-      } else if (hasDate) {
-        // First date found
-        currentBlock.push(line);
-        blockHasDate = true;
-      } else if (line === '') {
-        // Skip empty lines between jobs
-        if (currentBlock.length > 0 && !blockHasDate) {
-          currentBlock.push(line);
+      if (dateMatch) {
+        // Save previous job if exists
+        if (currentJob) {
+          jobs.push(this.finalizeJob(currentJob));
+          currentJob = null;
         }
-      } else {
-        currentBlock.push(line);
+        
+        // Start new job
+        const beforeDate = line.substring(0, dateMatch.index).trim();
+        const afterDate = line.substring(dateMatch.index + dateMatch[0].length).trim();
+        
+        // Convert dates
+        let startDate = dateMatch[1].replace(/\b(\d{2})\b/, (m) => this.convertToFullYear(m));
+        let endDate = dateMatch[2];
+        if (!/present|current/i.test(endDate)) {
+          endDate = endDate.replace(/\b(\d{2})\b/, (m) => this.convertToFullYear(m));
+        }
+        
+        currentJob = {
+          headerText: beforeDate,
+          startDate: startDate,
+          endDate: endDate,
+          descriptionLines: afterDate ? [afterDate] : []
+        };
+      } else if (currentJob) {
+        // Add to current job's description
+        currentJob.descriptionLines.push(line);
       }
     }
     
-    // Add last block
-    if (currentBlock.length > 0 && blockHasDate) {
-      jobBlocks.push(currentBlock.join('\n'));
-    }
-    
-    // Extract job from each block
-    for (const block of jobBlocks) {
-      const job = this.extractJobFromParagraph(block);
-      if (job) {
-        jobs.push(job);
-      }
+    // Save last job
+    if (currentJob) {
+      jobs.push(this.finalizeJob(currentJob));
     }
     
     return jobs;
+  }
+  
+  /**
+   * Convert raw job data into final format
+   */
+  finalizeJob(jobData) {
+    const headerText = jobData.headerText.replace(/^[•\-]\s*/, '').trim();
+    let position = '';
+    let company = '';
+    
+    // Parse header: "Position at Company" or "Position, Company, Location"
+    if (headerText.toLowerCase().includes(' at ')) {
+      const parts = headerText.split(/\s+at\s+/i);
+      position = parts[0].trim().replace(/:$/, '');
+      company = parts[1] ? parts[1].trim().split(':')[0].split(',')[0].trim() : '';
+    } else if (headerText.includes(',')) {
+      const parts = headerText.split(',').map(p => p.trim());
+      position = parts[0] || '';
+      company = parts.slice(1).join(', ');
+    } else {
+      position = headerText;
+    }
+    
+    // Clean description
+    const description = jobData.descriptionLines
+      .map(l => l.replace(/^[•\-]\s*/, '').trim())
+      .filter(l => l && !l.match(/^(PROFESSIONAL|VOLUNTEERING|WORK)\s+(EXPERIENCE|HISTORY)$/i))
+      .join(' ');
+    
+    return {
+      position: position || 'Position',
+      company: company || 'Company',
+      startDate: jobData.startDate,
+      endDate: jobData.endDate,
+      summary: description
+    };
   }
 
   /**
