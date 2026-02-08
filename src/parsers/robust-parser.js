@@ -496,104 +496,150 @@ class RobustResumeParser {
   }
 
   /**
-   * Extract jobs - handle two formats:
-   * 1. Professional: "Title, Company Date" then bullet achievements
-   * 2. Volunteering: "• Title: description Date"
+   * Extract jobs - CLEAN REWRITE
+   * Step 1: Find job boundaries
+   * Step 2: Extract full text blocks
+   * Step 3: Parse each block
    */
   extractJobsByParagraphs(text) {
     const jobs = [];
     
     // Remove section headers
-    const cleanedText = text.replace(/^(PROFESSIONAL EXPERIENCE|VOLUNTEERING EXPERIENCE|WORK EXPERIENCE|EMPLOYMENT HISTORY)\s*$/gm, '');
+    text = text.replace(/^(PROFESSIONAL EXPERIENCE|VOLUNTEERING EXPERIENCE|WORK EXPERIENCE|EMPLOYMENT HISTORY)\s*$/gm, '');
     
-    const lines = cleanedText.split('\n');
-    const datePattern = /([A-Z][a-z]+\.?\s+\d{2,4})\s*[-–—]\s*((?:[A-Z][a-z]+\.?\s+\d{2,4})|Present|Current)/i;
+    // Step 1: Find job boundaries (indices where jobs start)
+    const jobBoundaries = this.findJobBoundaries(text);
     
-    let currentJob = null;
-    
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i].trim();
-      if (!line) continue;
+    // Step 2: Extract text block for each job
+    for (let i = 0; i < jobBoundaries.length; i++) {
+      const startIdx = jobBoundaries[i].index;
+      const endIdx = jobBoundaries[i + 1] ? jobBoundaries[i + 1].index : text.length;
+      const blockText = text.substring(startIdx, endIdx).trim();
       
-      const startsWithBullet = /^[•\-●]/.test(line);
-      const dateMatch = line.match(datePattern);
-      
-      // Case 1: Line has date on it (professional format or volunteering date line)
-      if (dateMatch) {
-        const beforeDate = line.substring(0, dateMatch.index).trim();
-        const afterDate = line.substring(dateMatch.index + dateMatch[0].length).trim();
-        
-        // Convert dates
-        let startDate = dateMatch[1].replace(/\b(\d{2})\b/, (m) => this.convertToFullYear(m));
-        let endDate = dateMatch[2];
-        if (!/present|current/i.test(endDate)) {
-          endDate = endDate.replace(/\b(\d{2})\b/, (m) => this.convertToFullYear(m));
-        }
-        
-        // Check if this is a job header line (no bullet) or just a date within description
-        if (!startsWithBullet && beforeDate && beforeDate.length > 10) {
-          // Professional format: "Title, Company Date"
-          // Save previous job
-          if (currentJob && currentJob.startDate) {
-            jobs.push(this.finalizeJob(currentJob));
-          }
-          
-          currentJob = {
-            headerText: beforeDate,
-            startDate: startDate,
-            endDate: endDate,
-            descriptionLines: afterDate ? [afterDate] : []
-          };
-        } else if (currentJob) {
-          // This is the date for a volunteering job already started
-          currentJob.startDate = startDate;
-          currentJob.endDate = endDate;
-          
-          // Add any text before/after date to description
-          const textWithoutBullet = beforeDate.replace(/^[•\-●]\s*/, '').trim();
-          if (textWithoutBullet) currentJob.descriptionLines.push(textWithoutBullet);
-          if (afterDate) currentJob.descriptionLines.push(afterDate);
-        }
-        
-      } else if (startsWithBullet) {
-        // Bullet point - could be achievement or job header
-        const lineWithoutBullet = line.replace(/^[•\-●]\s*/, '').trim();
-        
-        // Check if this looks like a job header (has "at" or colon and is first bullet after saving job)
-        const looksLikeJobHeader = (lineWithoutBullet.toLowerCase().includes(' at ') || 
-                                    lineWithoutBullet.includes(':')) &&
-                                   (!currentJob || currentJob.startDate);
-        
-        if (looksLikeJobHeader) {
-          // Save previous job if it has dates
-          if (currentJob && currentJob.startDate) {
-            jobs.push(this.finalizeJob(currentJob));
-          }
-          
-          // Start new volunteering job
-          currentJob = {
-            headerText: lineWithoutBullet,
-            startDate: '',
-            endDate: '',
-            descriptionLines: []
-          };
-        } else if (currentJob) {
-          // Achievement bullet for current job
-          currentJob.descriptionLines.push(lineWithoutBullet);
-        }
-        
-      } else if (currentJob) {
-        // Regular text line - add to description
-        currentJob.descriptionLines.push(line);
+      // Step 3: Parse this block into a job
+      const job = this.parseJobBlock(blockText, jobBoundaries[i].type);
+      if (job && job.startDate) {
+        jobs.push(job);
       }
     }
     
-    // Save last job
-    if (currentJob && currentJob.startDate) {
-      jobs.push(this.finalizeJob(currentJob));
+    return jobs;
+  }
+  
+  /**
+   * Find where each job starts
+   */
+  findJobBoundaries(text) {
+    const boundaries = [];
+    const lines = text.split('\n');
+    const datePattern = /([A-Z][a-z]+\.?\s+\d{2,4})\s*[-–—]\s*((?:[A-Z][a-z]+\.?\s+\d{2,4})|Present|Current)/i;
+    
+    let currentIndex = 0;
+    
+    for (const line of lines) {
+      const trimmed = line.trim();
+      
+      // Skip empty lines
+      if (!trimmed) {
+        currentIndex += line.length + 1;
+        continue;
+      }
+      
+      const startsWithBullet = /^[•\-●]/.test(trimmed);
+      const hasDate = datePattern.test(trimmed);
+      
+      // Job boundary markers:
+      // 1. Non-bullet line with date AND substantial text = Professional job
+      // 2. Bullet with "at" or ":" = Volunteering job
+      
+      if (!startsWithBullet && hasDate && trimmed.length > 20) {
+        boundaries.push({ index: currentIndex, type: 'professional' });
+      } else if (startsWithBullet) {
+        const withoutBullet = trimmed.replace(/^[•\-●]\s*/, '');
+        if (withoutBullet.toLowerCase().includes(' at ') || withoutBullet.includes(':')) {
+          boundaries.push({ index: currentIndex, type: 'volunteering' });
+        }
+      }
+      
+      currentIndex += line.length + 1;
     }
     
-    return jobs;
+    return boundaries;
+  }
+  
+  /**
+   * Parse a single job block
+   */
+  parseJobBlock(blockText, jobType) {
+    const datePattern = /([A-Z][a-z]+\.?\s+\d{2,4})\s*[-–—]\s*((?:[A-Z][a-z]+\.?\s+\d{2,4})|Present|Current)/i;
+    const dateMatch = blockText.match(datePattern);
+    
+    if (!dateMatch) return null;
+    
+    // Convert dates
+    let startDate = dateMatch[1].replace(/\b(\d{2})\b/, (m) => this.convertToFullYear(m));
+    let endDate = dateMatch[2];
+    if (!/present|current/i.test(endDate)) {
+      endDate = endDate.replace(/\b(\d{2})\b/, (m) => this.convertToFullYear(m));
+    }
+    
+    // Remove date to get header + description
+    const withoutDate = blockText.replace(dateMatch[0], '').trim();
+    
+    let headerText = '';
+    let descriptionText = '';
+    
+    if (jobType === 'professional') {
+      // Professional: first line is header, rest is description
+      const lines = withoutDate.split('\n');
+      headerText = lines[0].trim();
+      descriptionText = lines.slice(1).join('\n').trim();
+    } else {
+      // Volunteering: bullet line up to colon is header, rest is description
+      const firstLine = withoutDate.split('\n')[0];
+      const colonIdx = firstLine.indexOf(':');
+      
+      if (colonIdx > 0) {
+        headerText = firstLine.substring(0, colonIdx).replace(/^[•\-●]\s*/, '').trim();
+        const afterColon = firstLine.substring(colonIdx + 1).trim();
+        const remainingLines = withoutDate.split('\n').slice(1).join('\n').trim();
+        descriptionText = [afterColon, remainingLines].filter(t => t).join(' ');
+      } else {
+        headerText = firstLine.replace(/^[•\-●]\s*/, '').trim();
+        descriptionText = withoutDate.split('\n').slice(1).join('\n').trim();
+      }
+    }
+    
+    // Parse position and company from header
+    let position = '';
+    let company = '';
+    
+    if (headerText.toLowerCase().includes(' at ')) {
+      const parts = headerText.split(/\s+at\s+/i);
+      position = parts[0].trim();
+      company = parts[1] ? parts[1].split(',')[0].trim() : '';
+    } else if (headerText.includes(',')) {
+      const parts = headerText.split(',').map(p => p.trim());
+      position = parts[0];
+      company = parts.slice(1).join(', ');
+    } else {
+      position = headerText;
+    }
+    
+    // Clean description: remove bullets, join
+    const description = descriptionText
+      .split('\n')
+      .map(l => l.replace(/^[•\-●]\s*/, '').trim())
+      .filter(l => l)
+      .join(' ');
+    
+    return {
+      position: position || 'Position',
+      company: company || 'Company',
+      startDate: startDate,
+      endDate: endDate,
+      summary: description
+    };
   }
   
   /**
