@@ -425,6 +425,25 @@ function parseResumeTextCurrent(cleanedText) {
   const url = extractURL(cleanedText);
   const location = extractLocation(cleanedText);
 
+  // Extract job title/label - skip lines that contain contact info
+  let label = "";
+  for (let i = 1; i < Math.min(5, lines.length); i++) {
+    const line = lines[i];
+    // Skip if line contains contact info (phone, email, or location patterns)
+    const hasContactInfo = 
+      line.includes('@') || 
+      /\+?\d{1,3}[-\s]?\d{3}[-\s]?\d{3}[-\s]?\d{4}/.test(line) ||
+      /\d{3}[-\s]?\d{3}[-\s]?\d{4}/.test(line) ||
+      line.includes('linkedin.com') ||
+      line.includes('github.com') ||
+      /[A-Z][a-z]+,\s*[A-Z]{2}/.test(line); // City, ST pattern
+    
+    if (!hasContactInfo && line.length > 0 && line.length < 100) {
+      label = line;
+      break;
+    }
+  }
+
   // Extract sections
   const sections = identifySections(cleanedText);
   console.log(
@@ -437,7 +456,7 @@ function parseResumeTextCurrent(cleanedText) {
   const resumeData = {
     basics: {
       name: name,
-      label: lines[1] || "",
+      label: label,
       email: email,
       phone: phone,
       url: url,
@@ -465,10 +484,29 @@ function extractEmail(text) {
 }
 
 function extractPhone(text) {
-  const phoneRegex =
-    /(\+?1[-.\s]?)?\(?([0-9]{3})\)?[-.\s]?([0-9]{3})[-.\s]?([0-9]{4})/;
-  const match = text.match(phoneRegex);
-  return match ? match[0] : "";
+  // Try multiple phone patterns to handle various formats
+  const phonePatterns = [
+    // International with spaces (e.g., "+ 1 979 721 2039")
+    /\+\s*\d{1,3}\s+\d{3}\s+\d{3}\s+\d{4}/,
+    // International with dashes/dots
+    /\+\d{1,3}[-.\s]?\d{3}[-.\s]?\d{3}[-.\s]?\d{4}/,
+    // US format with country code
+    /\+?1[-.\s]?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/,
+    // Standard US format
+    /\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/,
+    // Spaced format
+    /\d{3}\s+\d{3}\s+\d{4}/,
+  ];
+  
+  for (const pattern of phonePatterns) {
+    const match = text.match(pattern);
+    if (match) {
+      // Clean up extra spaces but preserve format
+      return match[0].replace(/\s+/g, ' ').trim();
+    }
+  }
+  
+  return "";
 }
 
 function extractURL(text) {

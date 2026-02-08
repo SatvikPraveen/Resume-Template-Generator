@@ -279,6 +279,28 @@ class RobustResumeParser {
     }
     // Remove phone numbers from name
     name = name.replace(/\d{3}[-.\s]?\d{3}[-.\s]?\d{4}/g, '').trim();
+    name = name.replace(/\+?\d{1,3}\s+\d{3}\s+\d{3}\s+\d{4}/g, '').trim();
+    
+    // Extract job title/label - skip lines with contact info
+    let label = '';
+    for (let i = 1; i < Math.min(5, lines.length); i++) {
+      const line = lines[i];
+      // Skip if line contains contact info or dates
+      const hasContactInfo = 
+        line.includes('@') || 
+        /\+?\d{1,3}[-\s]?\d{3}[-\s]?\d{3}[-\s]?\d{4}/.test(line) ||
+        /\d{3}[-\s]?\d{3}[-\s]?\d{4}/.test(line) ||
+        line.includes('linkedin.com') ||
+        line.includes('github.com') ||
+        line.includes('|') ||
+        this.containsDatePattern(line) ||
+        /[A-Z][a-z]+,\s*[A-Z]{2}/.test(line); // City, ST pattern
+      
+      if (!hasContactInfo && line.length > 0 && line.length < 100) {
+        label = line;
+        break;
+      }
+    }
     
     return {
       name: name,
@@ -286,7 +308,7 @@ class RobustResumeParser {
       phone: this.extractPhone(text),
       location: this.extractLocation(text),
       url: this.extractURL(text),
-      label: lines[1] && !this.containsDatePattern(lines[1]) ? lines[1] : '',
+      label: label,
       summary: sections.summary || sections.profile || sections.objective || ''
     };
   }
@@ -313,17 +335,26 @@ class RobustResumeParser {
    */
   extractPhone(text) {
     const patterns = [
-      // US format
-      /(\+?1[-.\s]?)?\(?([0-9]{3})\)?[-.\s]?([0-9]{3})[-.\s]?([0-9]{4})/,
-      // International
-      /\+?(\d{1,3}[-.\s]?)?(\d{2,4}[-.\s]?){2,4}\d{2,4}/,
+      // International with spaces (e.g., "+ 1 979 721 2039")
+      /\+\s*\d{1,3}\s+\d{3}\s+\d{3}\s+\d{4}/,
+      // International with dashes/dots
+      /\+\d{1,3}[-.\s]?\d{3}[-.\s]?\d{3}[-.\s]?\d{4}/,
+      // US format with country code
+      /\+?1[-.\s]?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/,
+      // Standard US format
+      /\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/,
+      // Spaced format
+      /\d{3}\s+\d{3}\s+\d{4}/,
       // Simple digits
       /\b\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b/
     ];
 
     for (const pattern of patterns) {
       const match = text.match(pattern);
-      if (match) return match[0].trim();
+      if (match) {
+        // Clean up multiple spaces but preserve single spaces
+        return match[0].replace(/\s+/g, ' ').trim();
+      }
     }
     
     return '';
