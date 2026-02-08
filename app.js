@@ -685,7 +685,7 @@ function parseWorkExperience(text) {
 
   console.log("=== PARSE WORK EXPERIENCE ===");
   console.log("Input text length:", text.length);
-  console.log("First 500 chars:", text.substring(0, 500));
+  console.log("First 800 chars:", text.substring(0, 800));
 
   const jobs = [];
 
@@ -791,11 +791,26 @@ function parseWorkExperience(text) {
       }
     }
 
+    // Convert 2-digit years to 4-digit (21 -> 2021, 23 -> 2023)
+    const convertYear = (dateStr) => {
+      return dateStr.replace(/(\w+)\s+(\d{2})$/i, (match, month, year) => {
+        const numYear = parseInt(year);
+        // If year is 00-50, assume 2000-2050, otherwise 1950-1999
+        const fullYear = numYear <= 50 ? 2000 + numYear : 1900 + numYear;
+        return `${month} ${fullYear}`;
+      });
+    };
+
+    const startDate = convertYear(dateInfo.startDate);
+    const endDate = dateInfo.endDate.toLowerCase() === 'present' || dateInfo.endDate.toLowerCase() === 'current' 
+      ? 'Present' 
+      : convertYear(dateInfo.endDate);
+
     jobs.push({
       position: position,
       company: company,
-      startDate: dateInfo.startDate,
-      endDate: dateInfo.endDate,
+      startDate: startDate,
+      endDate: endDate,
       summary: description,
     });
   }
@@ -1004,13 +1019,29 @@ function parseEducation(text) {
       studyType === "Master's" ||
       studyType === "Bachelor's" ||
       studyType === "PhD";
+    
+    // Convert 2-digit years to 4-digit (21 -> 2021, 23 -> 2023)
+    const convertYear = (dateStr) => {
+      if (!dateStr) return dateStr;
+      return dateStr.replace(/(\w+)\s+(\d{2})$/i, (match, month, year) => {
+        const numYear = parseInt(year);
+        const fullYear = numYear <= 50 ? 2000 + numYear : 1900 + numYear;
+        return `${month} ${fullYear}`;
+      });
+    };
+
+    const startDate = convertYear(current.startDate);
+    const endDate = current.endDate.toLowerCase() === 'present' || current.endDate.toLowerCase() === 'current'
+      ? 'Present'
+      : convertYear(current.endDate);
+
     if (institution && current.startDate && current.endDate && isDegreeType) {
       education.push({
         institution: institution,
         studyType: studyType,
         area: area || institution,
-        startDate: current.startDate,
-        endDate: current.endDate,
+        startDate: startDate,
+        endDate: endDate,
         location: location,
       });
       console.log(
