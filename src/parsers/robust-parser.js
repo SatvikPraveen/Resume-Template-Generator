@@ -484,19 +484,137 @@ class RobustResumeParser {
 
     const jobs = [];
     
-    // Strategy 1: Find by date ranges
-    const dateRanges = this.findDateRanges(sectionText);
+    // Strategy 1: Parse by paragraphs (handles both inline and header dates)
+    jobs.push(...this.extractJobsByParagraphs(sectionText));
     
-    if (dateRanges.length > 0) {
-      jobs.push(...this.extractJobsByDates(sectionText, dateRanges));
-    }
-    
-    // Strategy 2: Find by company indicators
+    // Strategy 2: Find by company indicators (fallback)
     if (jobs.length === 0) {
       jobs.push(...this.extractJobsByCompanyIndicators(sectionText));
     }
 
     return jobs;
+  }
+
+  /**
+   * Extract jobs by splitting into paragraphs and finding dates
+   */
+  extractJobsByParagraphs(text) {
+    const jobs = [];
+    
+    // Split by double newlines or bullet-prefixed lines
+    const paragraphs = [];
+    let currentPara = '';
+    const lines = text.split('\n');
+    
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
+      
+      // Start new paragraph if:
+      // 1. Line starts with bullet
+      // 2. Previous paragraph has a date and this line looks like a header
+      if (line.startsWith('•') || line.startsWith('-')) {
+        if (currentPara.trim()) {
+          paragraphs.push(currentPara.trim());
+        }
+        currentPara = line;
+      } else if (line === '') {
+        if (currentPara.trim()) {
+          paragraphs.push(currentPara.trim());
+          currentPara = '';
+        }
+      } else {
+        currentPara += (currentPara ? '\n' : '') + line;
+      }
+    }
+    
+    if (currentPara.trim()) {
+      paragraphs.push(currentPara.trim());
+    }
+    
+    // Extract job from each paragraph
+    for (const para of paragraphs) {
+      const job = this.extractJobFromParagraph(para);
+      if (job) {
+        jobs.push(job);
+      }
+    }
+    
+    return jobs;
+  }
+
+  /**
+   * Extract a single job from a paragraph containing header + description + date
+   */
+  extractJobFromParagraph(para) {
+    // Find date range in paragraph
+    const datePatterns = [
+      /([A-Z][a-z]+\.?\s+\d{2,4})\s*[-–—]\s*((?:[A-Z][a-z]+\.?\s+\d{2,4})|Present|Current)/gi,
+      /(\d{2,4})\s*[-–—]\s*(\d{2,4}|Present|Current)/gi,
+    ];
+    
+    let dateMatch = null;
+    let matchedPattern = null;
+    
+    for (const pattern of datePatterns) {
+      pattern.lastIndex = 0;
+      const match = pattern.exec(para);
+      if (match) {
+        dateMatch = match;
+        matchedPattern = pattern;
+        break;
+      }
+    }
+    
+    if (!dateMatch) {
+      return null; // No date found, skip this paragraph
+    }
+    
+    // Convert 2-digit years
+    let startDate = dateMatch[1].replace(/\b(\d{2})\b/, (m) => this.convertToFullYear(m));
+    let endDate = dateMatch[2];
+    if (!/present|current/i.test(endDate)) {
+      endDate = endDate.replace(/\b(\d{2})\b/, (m) => this.convertToFullYear(m));
+    }
+    
+    // Remove date from paragraph to get header + description
+    const withoutDate = para.replace(dateMatch[0], '').trim();
+    
+    // Split into lines
+    const lines = withoutDate.split('\n').map(l => l.replace(/^[•\-]\s*/, '').trim());
+    
+    // First line is the header (position/company)
+    const headerLine = lines[0] || '';
+    
+    // Rest is description
+    const description = lines.slice(1).join(' ').trim();
+    
+    // Parse position and company from header
+    let position = '';
+    let company = '';
+    
+    // Remove leading bullet if present
+    const cleanHeader = headerLine.replace(/^[•\-]\s*/, '').trim();
+    
+    if (cleanHeader.toLowerCase().includes(' at ')) {
+      const parts = cleanHeader.split(/\s+at\s+/i);
+      position = parts[0].trim().replace(/:$/, '');
+      company = parts[1].trim().replace(/:.*$/, ''); // Remove colon and everything after
+    } else if (cleanHeader.includes(',')) {
+      const parts = cleanHeader.split(',').map(p => p.trim());
+      position = parts[0] || '';
+      company = parts.slice(1).join(', ').trim();
+    } else {
+      position = cleanHeader.replace(/:$/, '');
+      company = '';
+    }
+    
+    return {
+      position: position,
+      company: company,
+      startDate: startDate,
+      endDate: endDate,
+      summary: description
+    };
   }
 
   /**
