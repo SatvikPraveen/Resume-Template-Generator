@@ -64,40 +64,49 @@
             const page = await pdf.getPage(pageNum);
             const textContent = await page.getTextContent();
 
-            // Try to order text items by vertical (y) then horizontal (x) position to improve reading order
-            const items = textContent.items.slice();
-            items.sort((a, b) => {
-              const ay = (a.transform && a.transform[5]) || 0;
-              const by = (b.transform && b.transform[5]) || 0;
-              // higher y usually appears earlier on page in pdf.js coordinates
-              if (Math.abs(by - ay) > 0.5) return by - ay;
-              const ax = (a.transform && a.transform[4]) || 0;
-              const bx = (b.transform && b.transform[4]) || 0;
-              return ax - bx;
-            });
-
-            // Group text by line (y-coordinate) to preserve line breaks
-            const lines = [];
-            let currentLine = { y: null, text: [] };
-
+            // Use natural PDF text order and group by Y-coordinate (rows)
+            const items = textContent.items;
+            
+            // Group items by Y position (row)
+            const rows = {};
             for (const item of items) {
-              const y = (item.transform && item.transform[5]) || 0;
-
-              // If y position changes significantly, start a new line
-              if (currentLine.y !== null && Math.abs(y - currentLine.y) > 0.5) {
-                if (currentLine.text.length > 0) {
-                  lines.push(currentLine.text.join(" "));
-                }
-                currentLine = { y: y, text: [item.str] };
-              } else {
-                currentLine.y = y;
-                currentLine.text.push(item.str);
+              const y = Math.round((item.transform && item.transform[5]) || 0);
+              if (!rows[y]) {
+                rows[y] = [];
               }
+              rows[y].push(item);
             }
 
-            // Add the last line
-            if (currentLine.text.length > 0) {
-              lines.push(currentLine.text.join(" "));
+            // Sort rows by Y coordinate (descending - top to bottom)
+            const sortedYs = Object.keys(rows).map(Number).sort((a, b) => b - a);
+            
+            const lines = [];
+            for (const y of sortedYs) {
+              // Sort items in this row by X coordinate (left to right)
+              rows[y].sort((a, b) => {
+                const ax = (a.transform && a.transform[4]) || 0;
+                const bx = (b.transform && b.transform[4]) || 0;
+                return ax - bx;
+              });
+
+              // Join text items in this row with smart spacing
+              const lineText = rows[y].map((item, idx) => {
+                const str = item.str;
+                // Add space before if not first item and previous item doesn't end with space
+                if (idx > 0 && !rows[y][idx - 1].str.endsWith(' ') && !str.startsWith(' ')) {
+                  const prevX = rows[y][idx - 1].transform[4] + (rows[y][idx - 1].width || 0);
+                  const currX = item.transform[4];
+                  // If significant gap, add space
+                  if (currX - prevX > 1) {
+                    return ' ' + str;
+                  }
+                }
+                return str;
+              }).join('');
+
+              if (lineText.trim()) {
+                lines.push(lineText.trim());
+              }
             }
 
             const pageText = lines.join("\n");

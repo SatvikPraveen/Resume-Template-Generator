@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF Text Extraction Debugger</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <style>
+        body {
+            font-family: monospace;
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        .panel {
+            border: 2px solid #333;
+            padding: 15px;
+            border-radius: 5px;
+        }
+        h2 {
+            margin-top: 0;
+            color: #2563eb;
+        }
+        #rawText, #sectionMatches {
+            background: #f5f5f5;
+            padding: 10px;
+            border-radius: 3px;
+            white-space: pre-wrap;
+            font-size: 12px;
+            max-height: 600px;
+            overflow-y: auto;
+            line-height: 1.4;
+        }
+        .match {
+            background: #4ade80;
+            color: #000;
+            font-weight: bold;
+            padding: 2px 4px;
+        }
+        .no-match {
+            background: #ef4444;
+            color: white;
+            padding: 2px 4px;
+        }
+        input[type="file"] {
+            margin-bottom: 20px;
+            padding: 10px;
+            font-size: 16px;
+        }
+        .stats {
+            background: #dbeafe;
+            padding: 10px;
+            border-radius: 3px;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>📄 PDF Text Extraction Debugger</h1>
+    <input type="file" id="fileInput" accept=".pdf" />
+    
+    <div class="container">
+        <div class="panel">
+            <h2>Raw Extracted Text</h2>
+            <div class="stats" id="stats"></div>
+            <div id="rawText">Upload a PDF to see extracted text...</div>
+        </div>
+        
+        <div class="panel">
+            <h2>Section Pattern Matches</h2>
+            <div id="sectionMatches">Waiting for PDF upload...</div>
+        </div>
+    </div>
+
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+        document.getElementById('fileInput').addEventListener('change', handleFile);
+
+        async function handleFile(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            try {
+                const arrayBuffer = await file.arrayBuffer();
+                const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
+                
+                let fullText = '';
+                for (let i = 1; i <= pdf.numPages; i++) {
+                    const page = await pdf.getPage(i);
+                    const textContent = await page.getTextContent();
+                    const pageText = textContent.items.map(item => item.str).join(' ');
+                    fullText += pageText + '\n';
+                }
+
+                displayResults(fullText);
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error processing PDF: ' + error.message);
+            }
+        }
+
+        function displayResults(text) {
+            // Display stats
+            const stats = document.getElementById('stats');
+            stats.innerHTML = `
+                <strong>Total Characters:</strong> ${text.length}<br>
+                <strong>Total Lines:</strong> ${text.split('\n').length}<br>
+                <strong>Contains "EDUCATION":</strong> ${text.includes('EDUCATION') ? '✅ Yes' : '❌ No'}<br>
+                <strong>Contains "EXPERIENCE":</strong> ${text.includes('EXPERIENCE') ? '✅ Yes' : '❌ No'}<br>
+                <strong>Contains "PROFESSIONAL":</strong> ${text.includes('PROFESSIONAL') ? '✅ Yes' : '❌ No'}<br>
+                <strong>Contains "VOLUNTEERING":</strong> ${text.includes('VOLUNTEERING') ? '✅ Yes' : '❌ No'}<br>
+                <strong>Contains "PROJECTS":</strong> ${text.includes('PROJECTS') ? '✅ Yes' : '❌ No'}
+            `;
+
+            // Display raw text with line numbers
+            const rawTextDiv = document.getElementById('rawText');
+            const lines = text.split('\n');
+            rawTextDiv.innerHTML = lines.map((line, i) => 
+                `<span style="color: #666">${String(i+1).padStart(3, '0')}:</span> ${escapeHtml(line)}`
+            ).join('\n');
+
+            // Test section patterns
+            const sectionMatchesDiv = document.getElementById('sectionMatches');
+            const patterns = [
+                { name: 'Education', pattern: /(?:^|\n)\s*(?:\w+\s+)*?(?:EDUCATION|ACADEMIC)\s*(?:\n|$)/gi },
+                { name: 'Experience', pattern: /(?:^|\n)\s*(?:\w+\s+)*?(?:EXPERIENCE|EMPLOYMENT|WORK\s+HISTORY|CAREER|VOLUNTEERING)\s*(?:\n|$)/gi },
+                { name: 'Projects', pattern: /(?:^|\n)\s*(?:\w+\s+)*?PROJECTS?\s*(?:\n|$)/gi },
+                { name: 'Skills', pattern: /(?:^|\n)\s*(?:\w+\s+)*?(?:SKILLS?|COMPETENCIES)\s*(?:\n|$)/gi },
+                { name: 'Certifications', pattern: /(?:^|\n)\s*(?:\w+\s+)*?CERTIFICATIONS?\s*(?:\n|$)/gi }
+            ];
+
+            let results = '<div style="font-size: 14px;">';
+            patterns.forEach(({ name, pattern }) => {
+                const matches = [...text.matchAll(pattern)];
+                if (matches.length > 0) {
+                    results += `<div class="match">✅ ${name}: ${matches.length} match(es)</div>`;
+                    matches.forEach((match, i) => {
+                        results += `<div style="margin-left: 20px; font-size: 12px;">Match ${i+1}: "${escapeHtml(match[0].trim())}"</div>`;
+                    });
+                } else {
+                    results += `<div class="no-match">❌ ${name}: No matches</div>`;
+                }
+                results += '<br>';
+            });
+
+            // Try to find section headers manually
+            results += '<hr><h3>Manual Search Results:</h3>';
+            const keywords = ['EDUCATION', 'PROFESSIONAL EXPERIENCE', 'EXPERIENCE', 'VOLUNTEERING', 'PROJECTS', 'SKILLS', 'CERTIFICATIONS'];
+            keywords.forEach(keyword => {
+                const idx = text.indexOf(keyword);
+                if (idx !== -1) {
+                    const context = text.substring(Math.max(0, idx - 50), Math.min(text.length, idx + 100));
+                    results += `<div style="background: #fef3c7; padding: 5px; margin: 5px 0;">
+                        Found "${keyword}" at position ${idx}:<br>
+                        <code>${escapeHtml(context)}</code>
+                    </div>`;
+                }
+            });
+
+            results += '</div>';
+            sectionMatchesDiv.innerHTML = results;
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+    </script>
+</body>
+</html>
