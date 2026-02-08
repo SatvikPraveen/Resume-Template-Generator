@@ -147,6 +147,27 @@ const TEMPLATES = {
           `
               : ""
           }
+
+          ${
+            data.certifications && data.certifications.length
+              ? `
+            <section class="resume-section">
+              <h2>Certifications</h2>
+              ${data.certifications
+                .map(
+                  (cert) => `
+                <div class="entry">
+                  <p><strong>${cert.name || "Certification"}</strong>${
+                    cert.issuer ? ` - ${cert.issuer}` : ""
+                  }${cert.date ? ` (${cert.date})` : ""}</p>
+                </div>
+              `
+                )
+                .join("")}
+            </section>
+          `
+              : ""
+          }
         </div>
       `;
 
