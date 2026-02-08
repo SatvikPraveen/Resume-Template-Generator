@@ -18,7 +18,7 @@ function cleanAndNormalizeText(text) {
 }
 
 // ==================== PARSER CONFIGURATION ====================
-// Version 2.4 - Line-by-line parsing, remove section headers
+// Version 2.5 - Bullet-based job detection, dates can be anywhere in description
 // Toggle to use robust parser when current parser fails
 const USE_ROBUST_PARSER = true;
 const USE_ROBUST_AS_PRIMARY = true; // Use robust parser as primary
@@ -27,7 +27,7 @@ let robustParser = null;
 // Initialize robust parser if available
 if (typeof RobustResumeParser !== 'undefined' && USE_ROBUST_PARSER) {
   robustParser = new RobustResumeParser();
-  console.log('[Parser v2.4] Robust parser initialized' + (USE_ROBUST_AS_PRIMARY ? ' as PRIMARY' : ' as fallback'));
+  console.log('[Parser v2.5] Robust parser initialized' + (USE_ROBUST_AS_PRIMARY ? ' as PRIMARY' : ' as fallback'));
 }
 
 // ==================== STATE MANAGEMENT ====================

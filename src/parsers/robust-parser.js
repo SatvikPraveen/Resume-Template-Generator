@@ -496,12 +496,12 @@ class RobustResumeParser {
   }
 
   /**
-   * Extract jobs by finding each date range and its associated content
+   * Extract jobs by identifying bullet points and their associated dates
    */
   extractJobsByParagraphs(text) {
     const jobs = [];
     
-    // Remove section headers (all caps lines that are section names, not job titles)
+    // Remove section headers
     const cleanedText = text.replace(/^(PROFESSIONAL EXPERIENCE|VOLUNTEERING EXPERIENCE|WORK EXPERIENCE|EMPLOYMENT HISTORY)\s*$/gm, '');
     
     const lines = cleanedText.split('\n');
@@ -513,17 +513,30 @@ class RobustResumeParser {
       const line = lines[i].trim();
       if (!line) continue;
       
+      // Check if line starts with bullet (new job header)
+      const startsWithBullet = /^[•\-●]/.test(line);
+      
       // Check if this line contains a date
       const dateMatch = line.match(datePattern);
       
-      if (dateMatch) {
-        // Save previous job if exists
-        if (currentJob) {
+      if (startsWithBullet) {
+        // Save previous job if exists and has a date
+        if (currentJob && currentJob.startDate) {
           jobs.push(this.finalizeJob(currentJob));
-          currentJob = null;
         }
         
-        // Start new job
+        // Start new job with this line as header
+        const headerWithoutBullet = line.replace(/^[•\-●]\s*/, '').trim();
+        
+        currentJob = {
+          headerText: headerWithoutBullet,
+          startDate: '',
+          endDate: '',
+          descriptionLines: []
+        };
+        
+      } else if (dateMatch && currentJob) {
+        // This line has the date - extract it and add any text before/after to description
         const beforeDate = line.substring(0, dateMatch.index).trim();
         const afterDate = line.substring(dateMatch.index + dateMatch[0].length).trim();
         
@@ -534,20 +547,21 @@ class RobustResumeParser {
           endDate = endDate.replace(/\b(\d{2})\b/, (m) => this.convertToFullYear(m));
         }
         
-        currentJob = {
-          headerText: beforeDate,
-          startDate: startDate,
-          endDate: endDate,
-          descriptionLines: afterDate ? [afterDate] : []
-        };
+        currentJob.startDate = startDate;
+        currentJob.endDate = endDate;
+        
+        // Add any text before/after date to description
+        if (beforeDate) currentJob.descriptionLines.push(beforeDate);
+        if (afterDate) currentJob.descriptionLines.push(afterDate);
+        
       } else if (currentJob) {
-        // Add to current job's description
+        // Regular description line - add to current job
         currentJob.descriptionLines.push(line);
       }
     }
     
     // Save last job
-    if (currentJob) {
+    if (currentJob && currentJob.startDate) {
       jobs.push(this.finalizeJob(currentJob));
     }
     
