@@ -18,7 +18,7 @@ function cleanAndNormalizeText(text) {
 }
 
 // ==================== PARSER CONFIGURATION ====================
-// Version 2.2 - Parse jobs by paragraphs to handle inline dates
+// Version 2.3 - Split jobs by each date occurrence to prevent merging
 // Toggle to use robust parser when current parser fails
 const USE_ROBUST_PARSER = true;
 const USE_ROBUST_AS_PRIMARY = true; // Use robust parser as primary
@@ -27,7 +27,7 @@ let robustParser = null;
 // Initialize robust parser if available
 if (typeof RobustResumeParser !== 'undefined' && USE_ROBUST_PARSER) {
   robustParser = new RobustResumeParser();
-  console.log('[Parser v2.2] Robust parser initialized' + (USE_ROBUST_AS_PRIMARY ? ' as PRIMARY' : ' as fallback'));
+  console.log('[Parser v2.3] Robust parser initialized' + (USE_ROBUST_AS_PRIMARY ? ' as PRIMARY' : ' as fallback'));
 }
 
 // ==================== STATE MANAGEMENT ====================

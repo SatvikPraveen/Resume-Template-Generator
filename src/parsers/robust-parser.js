@@ -496,44 +496,53 @@ class RobustResumeParser {
   }
 
   /**
-   * Extract jobs by splitting into paragraphs and finding dates
+   * Extract jobs by finding each date range and its associated content
    */
   extractJobsByParagraphs(text) {
     const jobs = [];
     
-    // Split by double newlines or bullet-prefixed lines
-    const paragraphs = [];
-    let currentPara = '';
+    // Find all lines with date ranges
+    const datePattern = /([A-Z][a-z]+\.?\s+\d{2,4})\s*[-–—]\s*((?:[A-Z][a-z]+\.?\s+\d{2,4})|Present|Current)/gi;
     const lines = text.split('\n');
+    const jobBlocks = [];
+    
+    let currentBlock = [];
+    let blockHasDate = false;
     
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i].trim();
       
-      // Start new paragraph if:
-      // 1. Line starts with bullet
-      // 2. Previous paragraph has a date and this line looks like a header
-      if (line.startsWith('•') || line.startsWith('-')) {
-        if (currentPara.trim()) {
-          paragraphs.push(currentPara.trim());
-        }
-        currentPara = line;
+      // Check if this line has a date
+      datePattern.lastIndex = 0;
+      const hasDate = datePattern.test(line);
+      
+      if (hasDate && currentBlock.length > 0 && blockHasDate) {
+        // Save previous block and start new one
+        jobBlocks.push(currentBlock.join('\n'));
+        currentBlock = [line];
+        blockHasDate = true;
+      } else if (hasDate) {
+        // First date found
+        currentBlock.push(line);
+        blockHasDate = true;
       } else if (line === '') {
-        if (currentPara.trim()) {
-          paragraphs.push(currentPara.trim());
-          currentPara = '';
+        // Skip empty lines between jobs
+        if (currentBlock.length > 0 && !blockHasDate) {
+          currentBlock.push(line);
         }
       } else {
-        currentPara += (currentPara ? '\n' : '') + line;
+        currentBlock.push(line);
       }
     }
     
-    if (currentPara.trim()) {
-      paragraphs.push(currentPara.trim());
+    // Add last block
+    if (currentBlock.length > 0 && blockHasDate) {
+      jobBlocks.push(currentBlock.join('\n'));
     }
     
-    // Extract job from each paragraph
-    for (const para of paragraphs) {
-      const job = this.extractJobFromParagraph(para);
+    // Extract job from each block
+    for (const block of jobBlocks) {
+      const job = this.extractJobFromParagraph(block);
       if (job) {
         jobs.push(job);
       }
@@ -543,7 +552,7 @@ class RobustResumeParser {
   }
 
   /**
-   * Extract a single job from a paragraph containing header + description + date
+   * Extract a single job from a block containing header + description + date
    */
   extractJobFromParagraph(para) {
     // Find date range in paragraph
@@ -566,7 +575,7 @@ class RobustResumeParser {
     }
     
     if (!dateMatch) {
-      return null; // No date found, skip this paragraph
+      return null; // No date found, skip this block
     }
     
     // Convert 2-digit years
@@ -579,38 +588,73 @@ class RobustResumeParser {
     // Remove date from paragraph to get header + description
     const withoutDate = para.replace(dateMatch[0], '').trim();
     
-    // Split into lines
-    const lines = withoutDate.split('\n').map(l => l.replace(/^[•\-]\s*/, '').trim());
+    // Remove any leading bullet
+    const cleanText = withoutDate.replace(/^[•\-]\s*/, '').trim();
     
-    // First line is the header (position/company)
-    const headerLine = lines[0] || '';
-    
-    // Rest is description
-    const description = lines.slice(1).join(' ').trim();
-    
-    // Parse position and company from header
+    // Find where the header ends and description begins
+    // Header is usually the first sentence or line before a colon or bullet
     let position = '';
     let company = '';
+    let description = '';
     
-    // Remove leading bullet if present
-    const cleanHeader = headerLine.replace(/^[•\-]\s*/, '').trim();
+    // Split into lines
+    const lines = cleanText.split('\n').filter(l => l.trim());
     
-    if (cleanHeader.toLowerCase().includes(' at ')) {
-      const parts = cleanHeader.split(/\s+at\s+/i);
-      position = parts[0].trim().replace(/:$/, '');
-      company = parts[1].trim().replace(/:.*$/, ''); // Remove colon and everything after
-    } else if (cleanHeader.includes(',')) {
-      const parts = cleanHeader.split(',').map(p => p.trim());
-      position = parts[0] || '';
-      company = parts.slice(1).join(', ').trim();
+    if (lines.length === 0) {
+      return null;
+    }
+    
+    // First line or sentence is the header
+    const firstLine = lines[0];
+    
+    // Check if first line has a colon (common in volunteering format)
+    const colonIndex = firstLine.indexOf(':');
+    if (colonIndex > 0) {
+      // Everything before colon is header, after is description start
+      const header = firstLine.substring(0, colonIndex).trim();
+      const descStart = firstLine.substring(colonIndex + 1).trim();
+      
+      // Parse header
+      if (header.toLowerCase().includes(' at ')) {
+        const parts = header.split(/\s+at\s+/i);
+        position = parts[0].trim();
+        company = parts[1].trim().replace(/,$/, '');
+      } else if (header.includes(',')) {
+        const parts = header.split(',').map(p => p.trim());
+        position = parts[0];
+        company = parts.slice(1).join(', ');
+      } else {
+        position = header;
+      }
+      
+      // Description is everything after colon + remaining lines
+      const remainingLines = lines.slice(1).map(l => l.replace(/^[•\-]\s*/, '').trim());
+      description = [descStart, ...remainingLines].filter(l => l).join(' ');
+      
     } else {
-      position = cleanHeader.replace(/:$/, '');
-      company = '';
+      // No colon - assume first line is header in "Position, Company" format
+      if (firstLine.toLowerCase().includes(' at ')) {
+        const parts = firstLine.split(/\s+at\s+/i);
+        position = parts[0].trim();
+        company = parts[1].trim().replace(/,$/, '');
+      } else if (firstLine.includes(',')) {
+        const parts = firstLine.split(',').map(p => p.trim());
+        position = parts[0];
+        company = parts.slice(1).join(', ');
+      } else {
+        position = firstLine;
+      }
+      
+      // Description is remaining lines (bullets)
+      description = lines.slice(1)
+        .map(l => l.replace(/^[•\-]\s*/, '').trim())
+        .filter(l => l)
+        .join(' ');
     }
     
     return {
-      position: position,
-      company: company,
+      position: position || 'Position',
+      company: company || 'Company',
       startDate: startDate,
       endDate: endDate,
       summary: description
