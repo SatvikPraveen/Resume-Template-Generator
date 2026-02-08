@@ -939,10 +939,25 @@ function parseEducation(text) {
     const degrees = [
       { keyword: "Master's", type: "Master's" },
       { keyword: "Master", type: "Master's" },
+      { keyword: "MSDS", type: "Master's" },
+      { keyword: "MS", type: "Master's" },
+      { keyword: "M.S.", type: "Master's" },
+      { keyword: "MBA", type: "Master's" },
+      { keyword: "M.A.", type: "Master's" },
       { keyword: "Bachelor's", type: "Bachelor's" },
       { keyword: "Bachelor", type: "Bachelor's" },
+      { keyword: "BTech", type: "Bachelor's" },
+      { keyword: "B.Tech", type: "Bachelor's" },
+      { keyword: "BS", type: "Bachelor's" },
+      { keyword: "B.S.", type: "Bachelor's" },
+      { keyword: "BA", type: "Bachelor's" },
+      { keyword: "B.A.", type: "Bachelor's" },
       { keyword: "PhD", type: "PhD" },
+      { keyword: "Ph.D.", type: "PhD" },
       { keyword: "Doctorate", type: "PhD" },
+      { keyword: "Certificate", type: "Certificate" },
+      { keyword: "Cert.", type: "Certificate" },
+      { keyword: "Diploma", type: "Diploma" },
     ];
 
     for (const degreeInfo of degrees) {
@@ -1011,6 +1026,8 @@ function parseEducation(text) {
       studyType === "Master's" ||
       studyType === "Bachelor's" ||
       studyType === "PhD" ||
+      studyType === "Certificate" ||
+      studyType === "Diploma" ||
       studyType.toLowerCase().includes('ms') ||
       studyType.toLowerCase().includes('bs') ||
       studyType.toLowerCase().includes('ba') ||
