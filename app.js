@@ -451,6 +451,14 @@ function parseResumeTextCurrent(cleanedText) {
     Object.keys(sections),
     sections
   );
+  
+  // DEBUG: Log section content lengths
+  console.log("=== SECTION EXTRACTION DEBUG ===");
+  for (const [sectionName, content] of Object.entries(sections)) {
+    console.log(`${sectionName}: ${content.length} chars`);
+    console.log(`First 200 chars: ${content.substring(0, 200)}`);
+  }
+  console.log("=== END SECTION DEBUG ===");
 
   // Build resume data object
   const resumeData = {

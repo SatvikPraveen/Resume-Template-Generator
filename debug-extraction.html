@@ -94,8 +94,52 @@
                 for (let i = 1; i <= pdf.numPages; i++) {
                     const page = await pdf.getPage(i);
                     const textContent = await page.getTextContent();
-                    const pageText = textContent.items.map(item => item.str).join(' ');
-                    fullText += pageText + '\n';
+                    
+                    // Group items by Y position (row)
+                    const items = textContent.items;
+                    const rows = {};
+                    for (const item of items) {
+                        const y = Math.round((item.transform && item.transform[5]) || 0);
+                        if (!rows[y]) {
+                            rows[y] = [];
+                        }
+                        rows[y].push(item);
+                    }
+
+                    // Sort rows by Y coordinate (descending - top to bottom)
+                    const sortedYs = Object.keys(rows).map(Number).sort((a, b) => b - a);
+                    
+                    const lines = [];
+                    for (const y of sortedYs) {
+                        // Sort items in this row by X coordinate (left to right)
+                        rows[y].sort((a, b) => {
+                            const ax = (a.transform && a.transform[4]) || 0;
+                            const bx = (b.transform && b.transform[4]) || 0;
+                            return ax - bx;
+                        });
+
+                        // Join text items in this row with smart spacing
+                        const lineText = rows[y].map((item, idx) => {
+                            const str = item.str;
+                            // Add space before if not first item and previous item doesn't end with space
+                            if (idx > 0 && !rows[y][idx - 1].str.endsWith(' ') && !str.startsWith(' ')) {
+                                const prevX = rows[y][idx - 1].transform[4] + (rows[y][idx - 1].width || 0);
+                                const currX = item.transform[4];
+                                // If significant gap, add space
+                                if (currX - prevX > 1) {
+                                    return ' ' + str;
+                                }
+                            }
+                            return str;
+                        }).join('');
+
+                        if (lineText.trim()) {
+                            lines.push(lineText.trim());
+                        }
+                    }
+
+                    const pageText = lines.join('\n');
+                    fullText += pageText + '\n\n';
                 }
 
                 displayResults(fullText);
