@@ -28,7 +28,10 @@ class RobustResumeParser {
       experience: [
         'experience', 'work', 'employment', 'professional experience',
         'work experience', 'work history', 'career', 'career history',
-        'professional history', 'relevant experience', 'positions'
+        'professional history', 'relevant experience', 'positions',
+        // Add flexible patterns to match any word + "experience"
+        'volunteering experience', 'volunteer experience', 'internship experience',
+        'leadership experience', 'teaching experience', 'research experience'
       ],
       education: [
         'education', 'academic', 'qualifications', 'degrees',
@@ -143,6 +146,35 @@ class RobustResumeParser {
               length: match[0].length
             });
           }
+        }
+      }
+    }
+
+    // Strategy 1.5: Flexible pattern matching for compound headers
+    // Matches: "PROFESSIONAL EXPERIENCE", "VOLUNTEERING EXPERIENCE", etc.
+    const flexiblePatterns = [
+      { section: 'experience', pattern: /(?:^|\n)\s*(?:\w+\s+)*experience\s*:?\s*(?:\n|$)/gi },
+      { section: 'skills', pattern: /(?:^|\n)\s*(?:\w+\s+)*skills?\s*:?\s*(?:\n|$)/gi },
+      { section: 'education', pattern: /(?:^|\n)\s*(?:\w+\s+)*(?:education|academic)\s*:?\s*(?:\n|$)/gi },
+      { section: 'projects', pattern: /(?:^|\n)\s*(?:\w+\s+)*projects?\s*:?\s*(?:\n|$)/gi },
+    ];
+
+    for (const { section, pattern } of flexiblePatterns) {
+      let match;
+      pattern.lastIndex = 0;
+      while ((match = pattern.exec(text)) !== null) {
+        // Only add if we haven't already matched this section at this position
+        const alreadyMatched = headerMatches.some(h => 
+          Math.abs(h.index - match.index) < 10 && h.section === section
+        );
+        
+        if (!alreadyMatched) {
+          headerMatches.push({
+            section: section,
+            keyword: match[0].trim(),
+            index: match.index,
+            length: match[0].length
+          });
         }
       }
     }

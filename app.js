@@ -532,36 +532,37 @@ function extractLocation(text) {
 function identifySections(text) {
   const sections = {};
 
-  // Section patterns with flexibility for spaced letters (E DUCATION, E XPERIENCE, etc.)
-  // Using array to control order - check TECHNICAL SKILLS before SKILLS to avoid partial matches
+  // Flexible section detection - handles variations and compound headers
+  // Pattern matches any word(s) followed by section keywords
   const sectionPatterns = [
     {
       sectionName: "education",
       pattern:
-        /(?:^|\n)\s*(?:E\s*D\s*U\s*C\s*A\s*T\s*I\s*O\s*N|EDUCATION|ACADEMIC)\s*(?:\n|$)/gi,
+        /(?:^|\n)\s*(?:E\s*D\s*U\s*C\s*A\s*T\s*I\s*O\s*N|EDUCATION|ACADEMIC(?:\s+\w+)*)\s*(?:\n|$)/gi,
     },
     {
       sectionName: "experience",
+      // Matches: EXPERIENCE, PROFESSIONAL EXPERIENCE, WORK EXPERIENCE, VOLUNTEERING EXPERIENCE, etc.
       pattern:
-        /(?:^|\n)\s*(?:E\s*X\s*P\s*E\s*R\s*I\s*E\s*N\s*C\s*E|EXPERIENCE|PROFESSIONAL\s+EXPERIENCE|WORK\s+EXPERIENCE)\s*(?:\n|$)/gi,
+        /(?:^|\n)\s*(?:\w+\s+)*(?:E\s*X\s*P\s*E\s*R\s*I\s*E\s*N\s*C\s*E|EXPERIENCE|EMPLOYMENT|WORK\s+HISTORY|CAREER)\s*(?:\n|$)/gi,
     },
     {
       sectionName: "projects",
       pattern:
-        /(?:^|\n)\s*(?:P\s*R\s*O\s*J\s*E\s*C\s*T\s*S|PROJECTS|PORTFOLIO)\s*(?:\n|$)/gi,
+        /(?:^|\n)\s*(?:\w+\s+)?(?:P\s*R\s*O\s*J\s*E\s*C\s*T\s*S|PROJECTS|PORTFOLIO)\s*(?:\n|$)/gi,
     },
     {
       sectionName: "skills",
       pattern:
-        /(?:^|\n)\s*(?:T\s*E\s*C\s*H\s*N\s*I\s*C\s*A\s*L\s+S\s*K\s*I\s*L\s*L\s*S|TECHNICAL\s+SKILLS|SKILLS)\s*(?:\n|$)/gi,
+        /(?:^|\n)\s*(?:\w+\s+)?(?:T\s*E\s*C\s*H\s*N\s*I\s*C\s*A\s*L\s+S\s*K\s*I\s*L\s*L\s*S|TECHNICAL\s+SKILLS|SKILLS|COMPETENCIES)\s*(?:\n|$)/gi,
     },
     {
       sectionName: "summary",
-      pattern: /(?:^|\n)\s*(?:PROFESSIONAL\s+SUMMARY|SUMMARY)\s*(?:\n|$)/gi,
+      pattern: /(?:^|\n)\s*(?:\w+\s+)?(?:SUMMARY|PROFILE|OBJECTIVE)\s*(?:\n|$)/gi,
     },
     {
       sectionName: "certifications",
-      pattern: /(?:^|\n)\s*(?:CERTIFICATIONS|LICENSES)\s*(?:\n|$)/gi,
+      pattern: /(?:^|\n)\s*(?:CERTIFICATIONS|LICENSES|AWARDS)\s*(?:\n|$)/gi,
     },
     { sectionName: "languages", pattern: /(?:^|\n)\s*LANGUAGES\s*(?:\n|$)/gi },
   ];
