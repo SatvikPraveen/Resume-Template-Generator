@@ -56,7 +56,7 @@ const TEMPLATES = {
                       job.endDate
                     )}</span>
                   </div>
-                  <p class="company">${job.name || "Company"}</p>
+                  <p class="company">${job.company || "Company"}</p>
                   ${job.summary ? `<p>${job.summary}</p>` : ""}
                 </div>
               `
@@ -406,7 +406,7 @@ const TEMPLATES = {
                     <div class="card-header">
                       <div>
                         <h3>${job.position || "Position"}</h3>
-                        <p class="card-subtitle">${job.name || "Company"}</p>
+                        <p class="card-subtitle">${job.company || "Company"}</p>
                       </div>
                       <span class="card-date">${formatDate(
                         job.startDate,
@@ -752,7 +752,7 @@ const TEMPLATES = {
                   <div class="experience-card">
                     <div class="card-accent"></div>
                     <h3>${job.position || "Position"}</h3>
-                    <p class="card-company">${job.name || "Company"}</p>
+                    <p class="card-company">${job.company || "Company"}</p>
                     <p class="card-date">${formatDate(
                       job.startDate,
                       job.endDate
@@ -1224,10 +1224,9 @@ ${(
                   <span class="command">cat README.md</span>
                 </div>
                 <div class="terminal-output">
-                  <div class="output-line summary-text">"${data.basics.summary.substring(
-                    0,
-                    200
-                  )}"</div>
+                  <div class="output-line summary-text">"${(
+                    data.basics.summary || ""
+                  ).substring(0, 200)}"</div>
                 </div>
               `
                   : ""
@@ -1266,7 +1265,7 @@ ${(
                       ${
                         job.summary
                           ? `<div class="output-line description">
-                        <span class="label">✓</span> ${job.summary
+                        <span class="label">✓</span> ${(job.summary || "")
                           .substring(0, 180)
                           .replace(/\n/g, " ")}
                       </div>`
@@ -1373,7 +1372,7 @@ ${(
                       ${
                         proj.summary
                           ? `<div class="output-line project-desc">
-                        ${proj.summary.substring(0, 200).replace(/\n/g, " ")}
+                        ${(proj.summary || "").substring(0, 200).replace(/\n/g, " ")}
                       </div>`
                           : ""
                       }
@@ -1855,7 +1854,7 @@ ${(
                 <div class="formal-entry">
                   <div class="entry-header">
                     <h3>${job.position || "Position"} | ${
-                    job.name || "Company"
+                    job.company || "Company"
                   }</h3>
                     <span class="entry-date">${formatDate(
                       job.startDate,
@@ -2219,7 +2218,7 @@ ${(
                         )}</div>
                         <div class="entry-content">
                           <h3>${job.position || "Position"}</h3>
-                          <p class="company">${job.name || "Company"}</p>
+                          <p class="company">${job.company || "Company"}</p>
                           ${
                             job.summary
                               ? `<p class="description">${job.summary}</p>`
@@ -2508,7 +2507,7 @@ ${(
                     <h3>${job.position || "Position"}</h3>
                     <span>${formatDate(job.startDate, job.endDate)}</span>
                   </div>
-                  <p class="zen-company">${job.name || "Company"}</p>
+                  <p class="zen-company">${job.company || "Company"}</p>
                   ${job.summary ? `<p class="zen-text">${job.summary}</p>` : ""}
                 </div>
               `
@@ -2788,7 +2787,7 @@ ${(
                     colors[idx % colors.length]
                   }">
                     <h3>${job.position || "Position"}</h3>
-                    <p class="company">${job.name || "Company"}</p>
+                    <p class="company">${job.company || "Company"}</p>
                     <p class="date">${formatDate(
                       job.startDate,
                       job.endDate
@@ -3056,7 +3055,7 @@ ${(
                           idx + 1
                         }]</span> ${job.position || "Position"}</div>
                         <div class="entry-subtitle">${
-                          job.name || "Company"
+                          job.company || "Company"
                         }</div>
                         <div class="entry-desc indent">${(
                           job.summary || ""
@@ -3455,7 +3454,7 @@ ${(
               .map(
                 (job) => `
               <h3>${job.position || "Position"}</h3>
-              <p>${job.name || "Company"} | ${formatDate(
+              <p>${job.company || "Company"} | ${formatDate(
                   job.startDate,
                   job.endDate
                 )}</p>
@@ -3647,7 +3646,7 @@ ${(
                   <p class="entry-title"><strong>${
                     job.position || "Position"
                   }</strong></p>
-                  <p class="entry-institution">${job.name || "Organization"}</p>
+                  <p class="entry-institution">${job.company || "Organization"}</p>
                   <p class="entry-date">${formatDate(
                     job.startDate,
                     job.endDate
@@ -3911,7 +3910,7 @@ ${(
                       <h3>${job.position || "Position"}</h3>
                       <span>${formatDate(job.startDate, job.endDate)}</span>
                     </div>
-                    <p class="job-company">${job.name || "Company"}</p>
+                    <p class="job-company">${job.company || "Company"}</p>
                     ${
                       job.summary
                         ? `<p class="job-desc">${job.summary}</p>`

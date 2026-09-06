@@ -59,58 +59,72 @@
           });
           const pdf = await loadingTask.promise;
 
+          // Safely read a transform coordinate, defaulting to 0 when the
+          // transform array is missing or shorter than expected.
+          function getTransformCoord(item, index) {
+            const t = item && item.transform;
+            return Array.isArray(t) && t.length >= 6 ? t[index] || 0 : 0;
+          }
+
           let fullText = "";
           for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
-            const page = await pdf.getPage(pageNum);
-            const textContent = await page.getTextContent();
+            try {
+              const page = await pdf.getPage(pageNum);
+              const textContent = await page.getTextContent();
 
-            // Use natural PDF text order and group by Y-coordinate (rows)
-            const items = textContent.items;
-            
-            // Group items by Y position (row)
-            const rows = {};
-            for (const item of items) {
-              const y = Math.round((item.transform && item.transform[5]) || 0);
-              if (!rows[y]) {
-                rows[y] = [];
-              }
-              rows[y].push(item);
-            }
+              // Use natural PDF text order and group by Y-coordinate (rows)
+              const items = textContent.items;
 
-            // Sort rows by Y coordinate (descending - top to bottom)
-            const sortedYs = Object.keys(rows).map(Number).sort((a, b) => b - a);
-            
-            const lines = [];
-            for (const y of sortedYs) {
-              // Sort items in this row by X coordinate (left to right)
-              rows[y].sort((a, b) => {
-                const ax = (a.transform && a.transform[4]) || 0;
-                const bx = (b.transform && b.transform[4]) || 0;
-                return ax - bx;
-              });
-
-              // Join text items in this row with smart spacing
-              const lineText = rows[y].map((item, idx) => {
-                const str = item.str;
-                // Add space before if not first item and previous item doesn't end with space
-                if (idx > 0 && !rows[y][idx - 1].str.endsWith(' ') && !str.startsWith(' ')) {
-                  const prevX = rows[y][idx - 1].transform[4] + (rows[y][idx - 1].width || 0);
-                  const currX = item.transform[4];
-                  // If significant gap, add space
-                  if (currX - prevX > 1) {
-                    return ' ' + str;
-                  }
+              // Group items by Y position (row)
+              const rows = {};
+              for (const item of items) {
+                const y = Math.round(getTransformCoord(item, 5));
+                if (!rows[y]) {
+                  rows[y] = [];
                 }
-                return str;
-              }).join('');
-
-              if (lineText.trim()) {
-                lines.push(lineText.trim());
+                rows[y].push(item);
               }
-            }
 
-            const pageText = lines.join("\n");
-            fullText += pageText + "\n\n";
+              // Sort rows by Y coordinate (descending - top to bottom)
+              const sortedYs = Object.keys(rows).map(Number).sort((a, b) => b - a);
+
+              const lines = [];
+              for (const y of sortedYs) {
+                // Sort items in this row by X coordinate (left to right)
+                rows[y].sort((a, b) => {
+                  const ax = getTransformCoord(a, 4);
+                  const bx = getTransformCoord(b, 4);
+                  return ax - bx;
+                });
+
+                // Join text items in this row with smart spacing
+                const lineText = rows[y].map((item, idx) => {
+                  const str = item.str;
+                  // Add space before if not first item and previous item doesn't end with space
+                  if (idx > 0 && !rows[y][idx - 1].str.endsWith(' ') && !str.startsWith(' ')) {
+                    const prevX = getTransformCoord(rows[y][idx - 1], 4) + (rows[y][idx - 1].width || 0);
+                    const currX = getTransformCoord(item, 4);
+                    // If significant gap, add space
+                    if (currX - prevX > 1) {
+                      return ' ' + str;
+                    }
+                  }
+                  return str;
+                }).join('');
+
+                if (lineText.trim()) {
+                  lines.push(lineText.trim());
+                }
+              }
+
+              const pageText = lines.join("\n");
+              fullText += pageText + "\n\n";
+            } catch (pageError) {
+              console.warn(
+                `[PDFTextExtractor] Skipping page ${pageNum} due to extraction error:`,
+                pageError.message
+              );
+            }
           }
 
           return fullText.trim();
