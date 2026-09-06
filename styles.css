@@ -12,6 +12,7 @@
   --success: #10b981;
   --warning: #f59e0b;
   --danger: #ef4444;
+  --accent: #60a5fa;
 
   --bg-main: #0f172a;
   --bg-card: #1e293b;
@@ -121,6 +122,7 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 1rem;
   margin-bottom: 1.5rem;
   padding-bottom: 1rem;
   border-bottom: 2px solid var(--border);
@@ -150,8 +152,6 @@ body {
 .section-desc {
   color: var(--text-muted);
   font-size: 0.95rem;
-  margin-top: -1rem;
-  margin-bottom: 1rem;
 }
 
 /* ==================== UPLOAD SECTION ==================== */
@@ -526,6 +526,20 @@ body {
   background: rgba(59, 130, 246, 0.1);
 }
 
+/* ==================== ACCESSIBILITY: FOCUS STATES ====================
+   Explicit outline in addition to box-shadow, so keyboard focus stays
+   visible even in contexts where box-shadow is stripped (e.g. print,
+   forced-colors mode, or a stylesheet override). */
+.btn:focus-visible,
+.btn-copy:focus-visible,
+.btn-remove:focus-visible,
+.tab-btn:focus-visible,
+.template-card:focus-visible,
+.upload-box:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
 .template-preview {
   height: 150px;
   border-radius: var(--radius-md);
@@ -792,8 +806,9 @@ body {
     padding: 1.5rem;
   }
 
+  /* 3 columns where there's room, falling back to 2 when there isn't */
   .template-grid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   }
 
   .resume-container {
@@ -817,9 +832,37 @@ body {
   }
 }
 
+/* Intermediate breakpoint: locks in 2 columns between mobile and tablet */
+@media (max-width: 600px) {
+  .template-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
 @media (max-width: 480px) {
   .template-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+/* ==================== REDUCED MOTION ==================== */
+@media (prefers-reduced-motion: reduce) {
+  .section,
+  .upload-box,
+  .btn,
+  .btn-remove,
+  .btn-copy,
+  .tab-btn,
+  .template-card,
+  .spinner {
+    transition: none;
+    animation: none;
+  }
+
+  .upload-box:hover,
+  .btn-primary:hover:not(:disabled),
+  .template-card:hover:not(:disabled) {
+    transform: none;
   }
 }
 
@@ -874,6 +917,26 @@ body {
     border-top: none !important;
     border-bottom: none !important;
     box-shadow: none !important;
+  }
+
+  /* Keep each resume section (and its heading) together across page
+     breaks so headers don't get orphaned at the bottom of a page.
+     Templates vary in markup (section elements, or divs named
+     *-section/*-block/*-entry/*-card), so target both. */
+  .resume-content section,
+  .resume-content [class*="section"],
+  .resume-content [class*="block"],
+  .resume-content [class*="entry"],
+  .resume-content [class*="card"] {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  .resume-content h1,
+  .resume-content h2,
+  .resume-content h3 {
+    page-break-after: avoid;
+    break-after: avoid;
   }
 
   @page {
