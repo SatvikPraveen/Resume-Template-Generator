@@ -183,7 +183,7 @@ function handleFileSelect(e) {
   reader.onload = function (event) {
     STATE.pdfArrayBuffer = event.target.result;
     showFileInfo(file.name);
-    document.getElementById("parseBtn").disabled = false;
+    updateParseButtonState();
   };
 
   reader.onerror = function (error) {
@@ -205,7 +205,7 @@ function handleRemoveFile() {
 
   document.getElementById("pdfInput").value = "";
   document.getElementById("fileInfo").classList.add("is-hidden");
-  document.getElementById("parseBtn").disabled = true;
+  updateParseButtonState();
 
   // Reset UI
   hideUploadError();
@@ -220,7 +220,9 @@ function showFileInfo(fileName) {
 }
 
 // ==================== ERROR & STATUS UI ====================
-function showUploadError(message) {
+// type: "error" (default) or "warning" - both use the same banner, just
+// with a different accent color.
+function showUploadError(message, type = "error") {
   const errorBox = document.getElementById("uploadError");
   const errorText = document.getElementById("uploadErrorText");
 
@@ -231,6 +233,7 @@ function showUploadError(message) {
   }
 
   errorText.textContent = message;
+  errorBox.classList.toggle("warning", type === "warning");
   errorBox.classList.remove("is-hidden");
 }
 
@@ -239,14 +242,19 @@ function hideUploadError() {
   if (errorBox) errorBox.classList.add("is-hidden");
 }
 
-function showLoadingSubtext() {
-  const subtext = document.getElementById("loadingSubtext");
-  if (subtext) subtext.classList.remove("is-hidden");
+// Enabled only when a PDF has been loaded into memory AND the PDF engine
+// itself hasn't failed to load (that failure is terminal until refresh).
+function updateParseButtonState() {
+  const parseBtn = document.getElementById("parseBtn");
+  if (!parseBtn) return;
+  parseBtn.disabled = !STATE.pdfArrayBuffer || !!window.PDFTextExtractorError;
 }
 
-function hideLoadingSubtext() {
-  const subtext = document.getElementById("loadingSubtext");
-  if (subtext) subtext.classList.add("is-hidden");
+function showStillWorkingMessage() {
+  const statusText = document.getElementById("loadingStatusText");
+  if (statusText) {
+    statusText.textContent = "Still working — large files may take a moment…";
+  }
 }
 
 // Translate a raw error into a plain-English message for the upload section
@@ -259,10 +267,10 @@ function getUserFriendlyParseErrorMessage(error) {
     msg.includes("pdfjsLib is not loaded");
 
   if (isEngineFailure) {
-    return "The PDF engine failed to load. Please refresh the page and try again.";
+    return "PDF engine failed to load. Please refresh the page and try again.";
   }
 
-  return "Could not parse this PDF. Make sure it is text-based, not a scanned image.";
+  return "Could not parse this PDF. Make sure it is text-based and not a scanned image. Try opening it in a PDF reader to confirm it has selectable text.";
 }
 
 function handleDragOver(e) {
@@ -305,7 +313,7 @@ async function handleParsePDF() {
 
   hideUploadError();
   showLoading(true);
-  stillWorkingTimer = setTimeout(showLoadingSubtext, 8000);
+  stillWorkingTimer = setTimeout(showStillWorkingMessage, 8000);
 
   try {
     // Check if PDFTextExtractor is available
@@ -318,7 +326,12 @@ async function handleParsePDF() {
     }
 
     const extracted = await PDFTextExtractor.extractText(STATE.pdfArrayBuffer);
-    STATE.rawText = extracted || "";
+
+    if (!extracted || !extracted.trim()) {
+      throw new Error("Extracted PDF text is empty");
+    }
+
+    STATE.rawText = extracted;
 
     // Parse text into structured data
     STATE.resumeData = parseResumeText(STATE.rawText);
@@ -328,6 +341,21 @@ async function handleParsePDF() {
     enableTemplates();
 
     showLoading(false);
+
+    // Warn (without blocking the rest of the flow) if parsing ran but
+    // found essentially nothing - likely an image-based PDF or an
+    // unusual layout/font the extractor couldn't read cleanly.
+    const data = STATE.resumeData;
+    const hasWork = data.work && data.work.length > 0;
+    const hasEducation = data.education && data.education.length > 0;
+    const hasSkills = data.skills && data.skills.length > 0;
+
+    if (!hasWork && !hasEducation && !hasSkills) {
+      showUploadError(
+        "Resume parsed but little data was found. The PDF may use a layout or font that is hard to extract. Try the JSON tab to see what was captured.",
+        "warning"
+      );
+    }
 
     // Auto-select first template
     const classicBtn = document.querySelector(
@@ -349,20 +377,21 @@ async function handleParsePDF() {
 function showLoading(show) {
   const loading = document.getElementById("loadingIndicator");
   const parseBtn = document.getElementById("parseBtn");
+  const statusText = document.getElementById("loadingStatusText");
 
   if (show) {
+    if (statusText) statusText.textContent = "Parsing resume…";
     loading.classList.remove("is-hidden");
-    parseBtn.disabled = true;
+    if (parseBtn) parseBtn.disabled = true; // always disabled while a parse is in flight
   } else {
     loading.classList.add("is-hidden");
-    parseBtn.disabled = false;
+    updateParseButtonState();
 
     // Parsing is done (success or failure) - stop the "still working" timer
     if (stillWorkingTimer) {
       clearTimeout(stillWorkingTimer);
       stillWorkingTimer = null;
     }
-    hideLoadingSubtext();
   }
 }
 

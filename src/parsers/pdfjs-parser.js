@@ -7,15 +7,21 @@
 */
 (function () {
   // Show a visible, user-facing error when the PDF engine itself fails to
-  // load (as opposed to an error extracting a specific PDF file).
+  // load (as opposed to an error extracting a specific PDF file). Also
+  // disables the parse button, since retrying without a page refresh
+  // won't help - the engine load failure is terminal.
   function showEngineLoadError(message) {
     try {
       const errorBox = document.getElementById("uploadError");
       const errorText = document.getElementById("uploadErrorText");
       if (errorBox && errorText) {
         errorText.textContent = message;
+        errorBox.classList.remove("warning");
         errorBox.classList.remove("is-hidden");
       }
+
+      const parseBtn = document.getElementById("parseBtn");
+      if (parseBtn) parseBtn.disabled = true;
     } catch (domError) {
       // DOM not available yet - fall through to console logging below
     }
@@ -59,7 +65,7 @@
     try {
       await ensurePdfjsReady().catch((err) => {
         showEngineLoadError(
-          "The PDF engine failed to load. Please refresh the page."
+          "PDF engine failed to load. Please refresh the page and try again."
         );
         throw err;
       });
@@ -69,7 +75,7 @@
           // Re-ensure pdfjsLib is ready when called
           await ensurePdfjsReady().catch((err) => {
             showEngineLoadError(
-              "The PDF engine failed to load. Please refresh the page."
+              "PDF engine failed to load. Please refresh the page and try again."
             );
             throw err;
           });

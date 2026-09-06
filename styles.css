@@ -247,6 +247,11 @@ body {
   flex-shrink: 0;
 }
 
+.upload-error.warning {
+  background: rgba(245, 158, 11, 0.1);
+  border-color: var(--warning);
+}
+
 /* ==================== BUTTONS ==================== */
 .btn {
   display: inline-flex;
@@ -325,12 +330,6 @@ body {
 .loading p {
   color: var(--text-secondary);
   font-size: 0.95rem;
-}
-
-.loading-subtext {
-  color: var(--text-muted);
-  font-size: 0.85rem;
-  margin-top: -0.5rem;
 }
 
 /* ==================== TABS ==================== */
