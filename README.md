@@ -16,7 +16,7 @@ A powerful, locally-run web application that extracts data from PDF resumes and 
 ✅ **Export Options** - Save as HTML, JSON, or print-ready PDF  
 ✅ **Print-Friendly** - Clean, borderless output optimized for professional documents  
 ✅ **Offline-First** - All processing happens locally in your browser  
-✅ **No Dependencies** - Uses only PDF.js for extraction, zero backend required
+✅ **No External Network Dependencies at Runtime** - PDF.js is bundled locally, zero backend required
 
 ---
 
@@ -330,6 +330,8 @@ Contributions are welcome! Areas for enhancement:
 - [ ] Multi-language support
 - [ ] Resume improvement suggestions
 - [ ] Performance optimizations
+- [ ] Certifications section for the remaining templates (currently in Classic, Modern, Executive, ATS-Friendly, Academic, and Corporate; still missing from Creative, Tech, Compact, Minimal, Colorful, and Dark)
+- [ ] Broader accessibility coverage (ARIA labels/roles on tabs and template-selection cards, live-region announcements beyond the upload error banner)
 
 ### How to Contribute
 
@@ -386,11 +388,18 @@ This project is licensed under the **MIT License** - see the LICENSE file for de
 
 ---
 
+## ✅ What's New
+
+### Implemented from the v1.1 Roadmap
+
+- [x] Drag-and-drop file upload
+
+---
+
 ## 🔮 Roadmap
 
 ### v1.1 (Planned)
 
-- [ ] Drag-and-drop file upload
 - [ ] Additional templates (Gradient, Minimalist, Startup)
 - [ ] Custom color themes
 - [ ] Section reordering
@@ -408,4 +417,4 @@ This project is licensed under the **MIT License** - see the LICENSE file for de
 
 **Made with ❤️ for job seekers everywhere**
 
-Last Updated: November 24, 2025
+Last Updated: September 6, 2026
