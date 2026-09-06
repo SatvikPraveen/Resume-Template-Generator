@@ -27,7 +27,6 @@ let robustParser = null;
 // Initialize robust parser if available
 if (typeof RobustResumeParser !== 'undefined' && USE_ROBUST_PARSER) {
   robustParser = new RobustResumeParser();
-  console.log('[Parser v3.0 - REWRITTEN] Robust parser initialized' + (USE_ROBUST_AS_PRIMARY ? ' as PRIMARY' : ' as fallback'));
 }
 
 // ==================== STATE MANAGEMENT ====================
@@ -90,14 +89,11 @@ const SAMPLE_DATA = {
 
 // ==================== INITIALIZATION ====================
 document.addEventListener("DOMContentLoaded", function () {
-  console.log("[Init] DOMContentLoaded fired");
   initializeEventListeners();
   renderSamplePreview();
-  console.log("[Init] ✅ Initialization complete");
 });
 
 function initializeEventListeners() {
-  console.log("[Init] Starting event listener setup...");
 
   // File upload
   const pdfInput = document.getElementById("pdfInput");
@@ -111,10 +107,8 @@ function initializeEventListeners() {
   if (!removeFile) console.error("[Init] removeFile not found!");
 
   pdfInput.addEventListener("change", handleFileSelect);
-  console.log("[Init] ✅ File input change listener attached");
 
   parseBtn.addEventListener("click", handleParsePDF);
-  console.log("[Init] ✅ Parse button click listener attached");
 
   removeFile.addEventListener("click", handleRemoveFile);
 
@@ -122,21 +116,18 @@ function initializeEventListeners() {
   uploadBox.addEventListener("dragover", handleDragOver);
   uploadBox.addEventListener("dragleave", handleDragLeave);
   uploadBox.addEventListener("drop", handleDrop);
-  console.log("[Init] ✅ Drag and drop listeners attached");
 
   // Tabs
   const tabBtns = document.querySelectorAll(".tab-btn");
   tabBtns.forEach((btn) => {
     btn.addEventListener("click", handleTabSwitch);
   });
-  console.log("[Init] ✅ Tab listeners attached");
 
   // Template cards
   const templateCards = document.querySelectorAll(".template-card");
   templateCards.forEach((card) => {
     card.addEventListener("click", handleTemplateSelect);
   });
-  console.log("[Init] ✅ Template card listeners attached");
 
   // Export buttons
   document.getElementById("exportBtn").addEventListener("click", handleExport);
@@ -163,8 +154,6 @@ function renderSamplePreview() {
 
 // ==================== FILE HANDLING ====================
 function handleFileSelect(e) {
-  console.log("[File Upload] File select triggered");
-  console.log("[File Upload] event.target.files:", e.target.files);
 
   hideUploadError();
 
@@ -173,15 +162,6 @@ function handleFileSelect(e) {
     console.warn("[File Upload] No file selected");
     return;
   }
-
-  console.log(
-    "[File Upload] File selected:",
-    file.name,
-    "Size:",
-    file.size,
-    "Type:",
-    file.type
-  );
 
   if (!file.type.includes("pdf")) {
     console.error("[File Upload] Not a PDF file, type is:", file.type);
@@ -196,20 +176,14 @@ function handleFileSelect(e) {
   }
 
   STATE.pdfFile = file;
-  console.log("[File Upload] File saved to STATE");
 
   // Read file as ArrayBuffer
   const reader = new FileReader();
 
   reader.onload = function (event) {
-    console.log(
-      "[File Upload] FileReader onload - buffer size:",
-      event.target.result.byteLength
-    );
     STATE.pdfArrayBuffer = event.target.result;
     showFileInfo(file.name);
     document.getElementById("parseBtn").disabled = false;
-    console.log("[File Upload] ✅ File ready to parse");
   };
 
   reader.onerror = function (error) {
@@ -218,7 +192,6 @@ function handleFileSelect(e) {
   };
 
   reader.readAsArrayBuffer(file);
-  console.log("[File Upload] Started reading file as ArrayBuffer");
 }
 
 function handleRemoveFile() {
@@ -323,7 +296,6 @@ function handleDrop(e) {
 
 // ==================== PDF PARSING ====================
 async function handleParsePDF() {
-  console.log("[PDF Parsing] Starting...");
 
   if (!STATE.pdfArrayBuffer) {
     console.error("[PDF Parsing] No PDF buffer available");
@@ -337,12 +309,6 @@ async function handleParsePDF() {
 
   try {
     // Check if PDFTextExtractor is available
-    console.log("[PDF Parsing] Checking PDFTextExtractor...");
-    console.log(
-      "[PDF Parsing] window.PDFTextExtractor =",
-      typeof window.PDFTextExtractor
-    );
-    console.log("[PDF Parsing] window.pdfjsLib =", typeof window.pdfjsLib);
 
     if (!window.PDFTextExtractor || !PDFTextExtractor.extractText) {
       throw new Error(
@@ -351,35 +317,19 @@ async function handleParsePDF() {
       );
     }
 
-    console.log("[PDF Parsing] Extracting text from PDF...");
     const extracted = await PDFTextExtractor.extractText(STATE.pdfArrayBuffer);
     STATE.rawText = extracted || "";
-    console.log("[PDF Parsing] Text extracted. Length:", STATE.rawText.length);
 
     // Parse text into structured data
-    console.log("[PDF Parsing] Parsing resume text...");
     STATE.resumeData = parseResumeText(STATE.rawText);
-    console.log("[PDF Parsing] Resume data parsed:");
-    console.log(
-      "[PDF Parsing]   - Work entries:",
-      STATE.resumeData.work.length
-    );
-    console.log(
-      "[PDF Parsing]   - Education entries:",
-      STATE.resumeData.education.length
-    );
-    console.log("[PDF Parsing]   - Skills:", STATE.resumeData.skills.length);
 
     // Update UI
-    console.log("[PDF Parsing] Updating UI...");
     updateDataSection();
     enableTemplates();
 
     showLoading(false);
-    console.log("[PDF Parsing] ✅ Complete!");
 
     // Auto-select first template
-    console.log("[PDF Parsing] Clicking classic template...");
     const classicBtn = document.querySelector(
       '.template-card[data-template="classic"]'
     );
@@ -421,24 +371,10 @@ function parseResumeText(text) {
   // CRITICAL: Clean text FIRST to handle malformed PDF spacing
   const cleanedText = cleanAndNormalizeText(text);
 
-  console.log("parseResumeText - Raw text length:", text.length);
-  console.log("parseResumeText - Cleaned text length:", cleanedText.length);
-  console.log(
-    "parseResumeText - First 500 chars:",
-    cleanedText.substring(0, 500)
-  );
-
-  // CRITICAL DEBUG: Show full cleaned text in console for inspection
-  console.log("=== FULL CLEANED TEXT ===");
-  console.log(cleanedText);
-  console.log("=== END CLEANED TEXT ===");
-
   // USE ROBUST PARSER AS PRIMARY if enabled
   if (USE_ROBUST_AS_PRIMARY && robustParser) {
-    console.log('[Parser] Using RobustResumeParser as PRIMARY');
     try {
       const resumeData = robustParser.parseResume(cleanedText);
-      console.log('[Parser] ✅ Robust parser results:', resumeData);
       return resumeData;
     } catch (error) {
       console.error('[Parser] ❌ Robust parser failed, falling back to current parser:', error);
@@ -446,7 +382,6 @@ function parseResumeText(text) {
   }
 
   // Fallback: Try current parsing method
-  console.log('[Parser] Using current parser');
   let resumeData = parseResumeTextCurrent(cleanedText);
   
   // Check if parsing was successful (at least some data extracted)
@@ -462,15 +397,12 @@ function parseResumeText(text) {
     console.warn('[Parser] Current parser returned empty data. Trying robust parser...');
     try {
       resumeData = robustParser.parseResume(cleanedText);
-      console.log('[Parser] ✅ Robust parser extracted data successfully');
-      console.log('[Parser] Robust results:', resumeData);
     } catch (error) {
       console.error('[Parser] ❌ Robust parser also failed:', error);
       // Fall back to current parser results (even if empty)
     }
   }
 
-  console.log("parseResumeText - Final resumeData:", resumeData);
   return resumeData;
 }
 
@@ -481,8 +413,6 @@ function parseResumeTextCurrent(cleanedText) {
     .split("\n")
     .map((l) => l.trim())
     .filter((l) => l.length > 0);
-
-  console.log("parseResumeText - Total lines after split:", lines.length);
 
   // Extract basic info - handle pipe-separated contact info
   let name = lines[0] || "Resume";
@@ -522,19 +452,6 @@ function parseResumeTextCurrent(cleanedText) {
 
   // Extract sections
   const sections = identifySections(cleanedText);
-  console.log(
-    "parseResumeText - Sections found:",
-    Object.keys(sections),
-    sections
-  );
-  
-  // DEBUG: Log section content lengths
-  console.log("=== SECTION EXTRACTION DEBUG ===");
-  for (const [sectionName, content] of Object.entries(sections)) {
-    console.log(`${sectionName}: ${content.length} chars`);
-    console.log(`First 200 chars: ${content.substring(0, 200)}`);
-  }
-  console.log("=== END SECTION DEBUG ===");
 
   // Build resume data object
   const resumeData = {
@@ -551,9 +468,8 @@ function parseResumeTextCurrent(cleanedText) {
     education: parseEducation(sections.education || ""),
     skills: parseSkills(sections.skills || sections["technical skills"] || ""),
     projects: parseProjects(sections.projects || ""),
+    certifications: parseCertifications(sections.certifications || ""),
   };
-
-  console.log("parseResumeText - Final resumeData:", resumeData);
 
   // Clean up common formatting issues
   const cleanedData = cleanupResumeData(resumeData);
@@ -686,11 +602,6 @@ function identifySections(text) {
     sectionGroups[match.sectionName].push(match);
   }
 
-  console.log(
-    "Section groups:",
-    Object.entries(sectionGroups).map(([name, matches]) => `${name}(${matches.length})`)
-  );
-
   // Create flat list preserving order but marking duplicates
   const orderedMatches = [];
   const seenPositions = new Set();
@@ -700,28 +611,6 @@ function identifySections(text) {
       seenPositions.add(match.index);
       orderedMatches.push(match);
     }
-  }
-
-  console.log(
-    "Headers found:",
-    orderedMatches.map((h) => `${h.sectionName}@${h.index}`)
-  );
-
-  // Log the index positions to help debug section boundaries
-  for (let i = 0; i < orderedMatches.length; i++) {
-    const current = orderedMatches[i];
-    const next = orderedMatches[i + 1];
-    const startIdx = current.index + current.length;
-    const endIdx = next ? next.index : text.length;
-    const headerText = text
-      .substring(current.index, Math.min(current.index + 30, text.length))
-      .replace(/\n/g, " ");
-    console.log(
-      `[Section: ${current.sectionName}] Header: "${headerText}..." at index ${current.index}`
-    );
-    console.log(
-      `  Content from ${startIdx} to ${endIdx} (${endIdx - startIdx} chars)`
-    );
   }
 
   // Extract content between section headers - merge multiple instances of same section
@@ -744,24 +633,17 @@ function identifySections(text) {
       // Merge content if section already exists (e.g., multiple experience sections)
       if (sections[current.sectionName]) {
         sections[current.sectionName] += "\n\n" + content;
-        console.log(`✓ ${current.sectionName} (merged): ${content.substring(0, 80)}...`);
       } else {
         sections[current.sectionName] = content;
-        console.log(`✓ ${current.sectionName}: ${content.substring(0, 80)}...`);
       }
     }
   }
 
-  console.log("Sections extracted:", Object.keys(sections));
   return sections;
 }
 
 function parseWorkExperience(text) {
   if (!text) return [];
-
-  console.log("=== PARSE WORK EXPERIENCE ===");
-  console.log("Input text length:", text.length);
-  console.log("First 800 chars:", text.substring(0, 800));
 
   const jobs = [];
 
@@ -782,11 +664,7 @@ function parseWorkExperience(text) {
     });
   }
 
-  console.log("Date matches found:", dateMatches.length);
-  dateMatches.forEach((d, i) => console.log(`  ${i+1}. "${d.fullDate}"`));
-
   if (dateMatches.length === 0) {
-    console.log("❌ No work experience dates found");
     return [];
   }
 
@@ -897,22 +775,7 @@ function parseWorkExperience(text) {
 function parseEducation(text) {
   if (!text) return [];
 
-  console.log("=== PARSE EDUCATION ===");
-  console.log("Input text length:", text.length);
-  console.log("First 500 chars:", text.substring(0, 500));
-
   const education = [];
-
-  // Debug: log the actual text being parsed
-  if (text && text.length > 0) {
-    console.log(
-      "[parseEducation] Received text:",
-      text.substring(0, 150),
-      "... (length:",
-      text.length,
-      ")"
-    );
-  }
 
   // Strategy: Find all date ranges first (these are our anchors)
   // Then extract institution/degree/location around each date
@@ -933,13 +796,10 @@ function parseEducation(text) {
     });
   }
 
-  console.log(`[parseEducation] Found ${dateMatches.length} date ranges`);
   dateMatches.forEach((dm, i) => {
-    console.log(`  Date ${i + 1}: "${dm.fullMatch}" at index ${dm.index}`);
   });
 
   if (dateMatches.length === 0) {
-    console.log("❌ No education dates found");
     return [];
   }
 
@@ -1000,11 +860,6 @@ function parseEducation(text) {
     }
 
     // BRUTE FORCE: Look for degree keywords directly in the text
-    console.log(
-      `[Entry ${i + 1}] afterDateText (${
-        afterDateText.length
-      }): "${afterDateText.substring(0, 150).replace(/\n/g, "\\n")}"`
-    );
 
     let degreeFound = false;
     let degreeType = "";
@@ -1044,11 +899,6 @@ function parseEducation(text) {
 
       if (idx !== -1) {
         degreeType = degreeInfo.type;
-        console.log(
-          `[Entry ${i + 1}] Found degree: "${
-            degreeInfo.keyword
-          }" at position ${idx}`
-        );
 
         // Extract field: Look for "in/of [field]" after the degree keyword
         const afterKeyword = afterDateText.substring(
@@ -1067,7 +917,6 @@ function parseEducation(text) {
           // Remove anything after "City," pattern
           field = field.replace(/\s+[A-Z][a-z]+,.*$/, "").trim();
           fieldOfStudy = field;
-          console.log(`[Entry ${i + 1}] Found field: "${fieldOfStudy}"`);
         }
 
         // Extract location (City, Country) - look for comma-separated location pattern
@@ -1076,7 +925,6 @@ function parseEducation(text) {
         );
         if (locationMatch) {
           location = `${locationMatch[1]}, ${locationMatch[2]}`;
-          console.log(`[Entry ${i + 1}] Found location: "${location}"`);
         }
 
         degreeFound = true;
@@ -1087,13 +935,6 @@ function parseEducation(text) {
     if (degreeFound) {
       studyType = degreeType;
       area = fieldOfStudy || degreeType;
-      console.log(
-        `[Entry ${
-          i + 1
-        }] ✓ Degree matched: type="${studyType}", field="${area}"`
-      );
-    } else {
-      console.log(`[Entry ${i + 1}] ✗ NO DEGREE FOUND`);
     }
 
     // Only add if we found at least institution and dates
@@ -1139,19 +980,8 @@ function parseEducation(text) {
         endDate: endDate,
         location: location,
       });
-      console.log(
-        `[parseEducation] Added entry: ${institution} (${studyType})`
-      );
-    } else {
-      console.log(
-        `[parseEducation] SKIPPED entry - institution:${!!institution}, startDate:${!!current.startDate}, endDate:${!!current.endDate}, isDegreeType:${isDegreeType}, studyType:${studyType}`
-      );
     }
   }
-
-  console.log(
-    `[parseEducation] Returning ${education.length} education entries`
-  );
 
   return education;
 }
@@ -1231,10 +1061,6 @@ function parseSkills(text) {
 function parseProjects(text) {
   if (!text) return [];
 
-  console.log("=== PARSE PROJECTS ===");
-  console.log("Input text length:", text.length);
-  console.log("First 500 chars:", text.substring(0, 500));
-
   const projects = [];
 
   // Strategy: Split text into sections by finding project headers
@@ -1255,8 +1081,6 @@ function parseProjects(text) {
       matchLength: headerMatch[0].length,
     });
   }
-
-  console.log(`[parseProjects] Found ${headers.length} project headers`);
 
   // For each header, extract techs and description
   for (let i = 0; i < headers.length; i++) {
@@ -1320,6 +1144,43 @@ function parseProjects(text) {
   }
 
   return projects;
+}
+
+function parseCertifications(text) {
+  if (!text) return [];
+
+  const certifications = [];
+  const lines = text
+    .split("\n")
+    .map((l) => l.trim())
+    .filter((l) => l.length > 0);
+
+  // Look for a trailing 4-digit year (e.g. "... 2023") to split
+  // "Certification Name Issuer 2023" into name + date. Anchored to the end
+  // of the line and restricted to a bare year (not "<Capitalized word> year")
+  // since the certification name itself often ends in a capitalized word
+  // (e.g. "AWS Certified Solutions Architect 2023"), which would otherwise
+  // get swallowed into the date.
+  const dateRegex = /\d{4}\s*$/;
+
+  for (const line of lines) {
+    const dateMatch = line.match(dateRegex);
+    if (dateMatch) {
+      certifications.push({
+        name: line.substring(0, dateMatch.index).replace(/[-|•,]\s*$/, "").trim(),
+        issuer: "",
+        date: dateMatch[0].trim(),
+      });
+    } else {
+      certifications.push({
+        name: line,
+        issuer: "",
+        date: "",
+      });
+    }
+  }
+
+  return certifications;
 }
 
 // ==================== DATA CLEANUP ====================
@@ -1389,6 +1250,15 @@ function cleanupResumeData(resumeData) {
           k.replace(/\s+/g, " ").trim()
         );
       }
+    });
+  }
+
+  // Clean certifications
+  if (cleaned.certifications && Array.isArray(cleaned.certifications)) {
+    cleaned.certifications.forEach((cert) => {
+      if (cert.name) cert.name = cert.name.replace(/\s+/g, " ").trim();
+      if (cert.issuer) cert.issuer = cert.issuer.replace(/\s+/g, " ").trim();
+      if (cert.date) cert.date = cert.date.replace(/\s+/g, " ").trim();
     });
   }
 

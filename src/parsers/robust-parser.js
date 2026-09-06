@@ -1232,13 +1232,17 @@ class RobustResumeParser {
     const lines = sectionText.split('\n').map(l => l.trim()).filter(l => l);
 
     for (const line of lines) {
-      // Look for date patterns to separate cert name from date
-      const dateMatch = line.match(/\d{4}|[A-Z][a-z]+\s+\d{4}/);
-      
+      // Look for a trailing 4-digit year to separate cert name from date.
+      // Anchored to the end of the line and restricted to a bare year (not
+      // "<Capitalized word> year") since the certification name itself often
+      // ends in a capitalized word (e.g. "AWS Certified Solutions Architect
+      // 2023"), which would otherwise get swallowed into the date.
+      const dateMatch = line.match(/\d{4}\s*$/);
+
       if (dateMatch) {
         const name = line.substring(0, dateMatch.index).trim();
-        const date = dateMatch[0];
-        
+        const date = dateMatch[0].trim();
+
         certs.push({
           name: name,
           date: date,

@@ -160,8 +160,6 @@
           return fullText.trim();
         },
       };
-
-      console.log("[PDFTextExtractor] ✅ Initialized successfully");
     } catch (error) {
       console.error(
         "[PDFTextExtractor] ❌ Initialization failed:",
