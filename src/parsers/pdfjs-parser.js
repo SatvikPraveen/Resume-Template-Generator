@@ -6,6 +6,22 @@
   Waits for pdfjs-ready event if pdfjsLib not yet available.
 */
 (function () {
+  // Show a visible, user-facing error when the PDF engine itself fails to
+  // load (as opposed to an error extracting a specific PDF file).
+  function showEngineLoadError(message) {
+    try {
+      const errorBox = document.getElementById("uploadError");
+      const errorText = document.getElementById("uploadErrorText");
+      if (errorBox && errorText) {
+        errorText.textContent = message;
+        errorBox.classList.remove("is-hidden");
+      }
+    } catch (domError) {
+      // DOM not available yet - fall through to console logging below
+    }
+    console.error("[PDFTextExtractor]", message);
+  }
+
   // Helper to ensure pdfjsLib is loaded
   async function ensurePdfjsReady() {
     // Check if already loaded
@@ -41,12 +57,22 @@
   // Initialize after a brief delay to ensure DOM is ready
   const initPDFExtractor = async function () {
     try {
-      await ensurePdfjsReady();
+      await ensurePdfjsReady().catch((err) => {
+        showEngineLoadError(
+          "The PDF engine failed to load. Please refresh the page."
+        );
+        throw err;
+      });
 
       window.PDFTextExtractor = {
         extractText: async function (arrayBuffer) {
           // Re-ensure pdfjsLib is ready when called
-          await ensurePdfjsReady();
+          await ensurePdfjsReady().catch((err) => {
+            showEngineLoadError(
+              "The PDF engine failed to load. Please refresh the page."
+            );
+            throw err;
+          });
 
           if (!window.pdfjsLib) {
             throw new Error(
@@ -58,6 +84,10 @@
             data: arrayBuffer,
           });
           const pdf = await loadingTask.promise;
+
+          if (!pdf || !pdf.numPages || pdf.numPages < 1) {
+            throw new Error("This PDF has no pages to extract text from.");
+          }
 
           // Safely read a transform coordinate, defaulting to 0 when the
           // transform array is missing or shorter than expected.

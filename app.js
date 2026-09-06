@@ -39,6 +39,9 @@ let STATE = {
   currentTemplate: null,
 };
 
+// Timer that reveals a "still working" hint if parsing runs long
+let stillWorkingTimer = null;
+
 // Demo sample data used to render template previews when no resume is loaded
 const SAMPLE_DATA = {
   basics: {
@@ -163,6 +166,8 @@ function handleFileSelect(e) {
   console.log("[File Upload] File select triggered");
   console.log("[File Upload] event.target.files:", e.target.files);
 
+  hideUploadError();
+
   const file = e.target.files[0];
   if (!file) {
     console.warn("[File Upload] No file selected");
@@ -230,6 +235,7 @@ function handleRemoveFile() {
   document.getElementById("parseBtn").disabled = true;
 
   // Reset UI
+  hideUploadError();
   resetDataSection();
   disableTemplates();
   resetPreview();
@@ -238,6 +244,52 @@ function handleRemoveFile() {
 function showFileInfo(fileName) {
   document.getElementById("fileName").textContent = fileName;
   document.getElementById("fileInfo").classList.remove("is-hidden");
+}
+
+// ==================== ERROR & STATUS UI ====================
+function showUploadError(message) {
+  const errorBox = document.getElementById("uploadError");
+  const errorText = document.getElementById("uploadErrorText");
+
+  if (!errorBox || !errorText) {
+    // Fallback in case the error banner markup isn't present for some reason
+    alert(message);
+    return;
+  }
+
+  errorText.textContent = message;
+  errorBox.classList.remove("is-hidden");
+}
+
+function hideUploadError() {
+  const errorBox = document.getElementById("uploadError");
+  if (errorBox) errorBox.classList.add("is-hidden");
+}
+
+function showLoadingSubtext() {
+  const subtext = document.getElementById("loadingSubtext");
+  if (subtext) subtext.classList.remove("is-hidden");
+}
+
+function hideLoadingSubtext() {
+  const subtext = document.getElementById("loadingSubtext");
+  if (subtext) subtext.classList.add("is-hidden");
+}
+
+// Translate a raw error into a plain-English message for the upload section
+function getUserFriendlyParseErrorMessage(error) {
+  const msg = (error && error.message) || "";
+
+  const isEngineFailure =
+    msg.includes("did not load") ||
+    msg.includes("PDFTextExtractor module not available") ||
+    msg.includes("pdfjsLib is not loaded");
+
+  if (isEngineFailure) {
+    return "The PDF engine failed to load. Please refresh the page and try again.";
+  }
+
+  return "Could not parse this PDF. Make sure it is text-based, not a scanned image.";
 }
 
 function handleDragOver(e) {
@@ -279,7 +331,9 @@ async function handleParsePDF() {
     return;
   }
 
+  hideUploadError();
   showLoading(true);
+  stillWorkingTimer = setTimeout(showLoadingSubtext, 8000);
 
   try {
     // Check if PDFTextExtractor is available
@@ -337,7 +391,7 @@ async function handleParsePDF() {
   } catch (error) {
     console.error("[PDF Parsing] ❌ ERROR:", error);
     console.error("[PDF Parsing] Stack:", error.stack);
-    alert("Failed to parse PDF:\n\n" + error.message);
+    showUploadError(getUserFriendlyParseErrorMessage(error));
     showLoading(false);
   }
 }
@@ -352,6 +406,13 @@ function showLoading(show) {
   } else {
     loading.classList.add("is-hidden");
     parseBtn.disabled = false;
+
+    // Parsing is done (success or failure) - stop the "still working" timer
+    if (stillWorkingTimer) {
+      clearTimeout(stillWorkingTimer);
+      stillWorkingTimer = null;
+    }
+    hideLoadingSubtext();
   }
 }
 

@@ -46,6 +46,14 @@
             <div id="loadingIndicator" class="loading is-hidden">
               <div class="spinner"></div>
               <p>Extracting data from PDF...</p>
+              <p id="loadingSubtext" class="loading-subtext is-hidden">
+                Still working — large files may take a moment…
+              </p>
+            </div>
+
+            <div id="uploadError" class="upload-error is-hidden" role="alert">
+              <span class="error-icon">⚠️</span>
+              <span id="uploadErrorText"></span>
             </div>
           </div>
         </section>
