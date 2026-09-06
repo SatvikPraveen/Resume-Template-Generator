@@ -487,6 +487,33 @@ const TEMPLATES = {
             `
                 : ""
             }
+
+            ${
+              data.certifications && data.certifications.length
+                ? `
+              <section class="modern-block">
+                <h2>Certifications</h2>
+                <div class="cert-list">
+                  ${data.certifications
+                    .map(
+                      (cert) => `
+                    <div class="cert-item">
+                      <strong>${cert.name || "Certification"}</strong>${
+                        cert.issuer ? ` — ${cert.issuer}` : ""
+                      }${
+                        cert.date
+                          ? ` <span class="cert-date">(${cert.date})</span>`
+                          : ""
+                      }
+                    </div>
+                  `
+                    )
+                    .join("")}
+                </div>
+              </section>
+            `
+                : ""
+            }
           </main>
         </div>
       `;
@@ -671,10 +698,28 @@ const TEMPLATES = {
           margin: 8px 0 0 0;
           font-style: italic;
         }
+        .cert-list {
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+        }
+        .cert-item {
+          padding: 12px 18px;
+          background: #f8f9fa;
+          border-left: 4px solid #667eea;
+          border-radius: 8px;
+          font-size: 12px;
+          color: #1a1a1a;
+        }
+        .cert-date {
+          color: #999;
+          font-size: 11px;
+        }
         @media print {
           .modern-sidebar { background: white; color: #1a1a1a; }
           .badge { background: #f0f0f0; color: #1a1a1a; border: 1px solid #ddd; }
           .modern-card { border-left-color: #1a1a1a; background: white; }
+          .cert-item { border-left-color: #1a1a1a; background: white; }
         }
       `;
 
@@ -1954,6 +1999,35 @@ ${(
                         )}</p>`
                       : ""
                   }
+                </div>
+              `
+                )
+                .join("")}
+            </section>
+          `
+              : ""
+          }
+
+          ${
+            data.certifications && data.certifications.length
+              ? `
+            <section class="formal-section">
+              <h2>CERTIFICATIONS</h2>
+              <div class="section-divider">───────────────────────────────────────────────────────────────</div>
+              ${data.certifications
+                .map(
+                  (cert) => `
+                <div class="formal-entry compact">
+                  <div class="entry-header">
+                    <h3>${cert.name || "Certification"}${
+                    cert.issuer ? ` | ${cert.issuer}` : ""
+                  }</h3>
+                    ${
+                      cert.date
+                        ? `<span class="entry-date">${cert.date}</span>`
+                        : ""
+                    }
+                  </div>
                 </div>
               `
                 )
@@ -3525,6 +3599,23 @@ ${(
           `
               : ""
           }
+
+          ${
+            data.certifications && data.certifications.length
+              ? `
+            <h2>CERTIFICATIONS</h2>
+            ${data.certifications
+              .map(
+                (cert) => `
+              <p>${cert.name || "Certification"}${
+                  cert.issuer ? ` | ${cert.issuer}` : ""
+                }${cert.date ? ` | ${cert.date}` : ""}</p>
+            `
+              )
+              .join("")}
+          `
+              : ""
+          }
         </div>
       `;
 
@@ -3710,6 +3801,37 @@ ${(
                       ? `<p class="entry-desc"><strong>Technologies:</strong> ${proj.keywords.join(
                           ", "
                         )}</p>`
+                      : ""
+                  }
+                </div>
+              `
+                )
+                .join("")}
+            </div>
+          `
+              : ""
+          }
+
+          ${
+            data.certifications && data.certifications.length
+              ? `
+            <div class="academic-section">
+              <h2>Certifications</h2>
+              ${data.certifications
+                .map(
+                  (cert) => `
+                <div class="academic-entry">
+                  <p class="entry-title"><strong>${
+                    cert.name || "Certification"
+                  }</strong></p>
+                  ${
+                    cert.issuer
+                      ? `<p class="entry-institution">${cert.issuer}</p>`
+                      : ""
+                  }
+                  ${
+                    cert.date
+                      ? `<p class="entry-date">${cert.date}</p>`
                       : ""
                   }
                 </div>
@@ -3929,7 +4051,7 @@ ${(
               data.education && data.education.length
                 ? `
               <section class="corp-section">
-                <h2>Education & Certifications</h2>
+                <h2>Education</h2>
                 ${data.education
                   .map(
                     (edu) => `
@@ -3941,6 +4063,28 @@ ${(
                       edu.startDate,
                       edu.endDate
                     )}</p>
+                  </div>
+                `
+                  )
+                  .join("")}
+              </section>
+            `
+                : ""
+            }
+
+            ${
+              data.certifications && data.certifications.length
+                ? `
+              <section class="corp-section">
+                <h2>Certifications</h2>
+                ${data.certifications
+                  .map(
+                    (cert) => `
+                  <div class="corp-edu">
+                    <p><strong>${cert.name || "Certification"}</strong>${
+                      cert.issuer ? ` — ${cert.issuer}` : ""
+                    }</p>
+                    ${cert.date ? `<p>${cert.date}</p>` : ""}
                   </div>
                 `
                   )
