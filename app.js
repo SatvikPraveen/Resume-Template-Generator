@@ -642,131 +642,178 @@ function identifySections(text) {
   return sections;
 }
 
+// Role keywords that must appear in a header line for it to count as a
+// job title, so wrapped mid-sentence PDF fragments (e.g. "Child Labor
+// rehab, rescuing 23 children,") don't get mistaken for a new job.
+const WORK_ROLE_KEYWORDS = [
+  "supervisor", "coordinator", "manager", "leader", "engineer",
+  "analyst", "developer", "intern", "director", "officer",
+  "designer", "consultant", "specialist", "lead", "senior",
+  "junior", "associate", "principal", "staff",
+];
+
+function looksLikeJobTitle(text) {
+  const lower = text.toLowerCase();
+  return WORK_ROLE_KEYWORDS.some((kw) => lower.includes(kw));
+}
+
+// Parses "Role at Organization" or "Role, Organization" out of a header
+// line. `matched` is true only when one of those patterns was actually
+// found - callers use that (together with looksLikeJobTitle) to decide
+// whether a line is really a job header.
+function parseJobHeaderLine(headerText) {
+  const text = headerText.replace(/^[●•\-]\s*/, "").trim();
+
+  const atMatch = text.match(/^(.+?)\s+at\s+(.+)$/i);
+  if (atMatch) {
+    return { position: atMatch[1].trim(), company: atMatch[2].trim(), matched: true };
+  }
+
+  if (text.includes(",")) {
+    const parts = text.split(",").map((p) => p.trim()).filter((p) => p);
+    return {
+      position: parts[0] || "",
+      company: parts.slice(1).join(", "),
+      matched: parts.length > 1,
+    };
+  }
+
+  return { position: text, company: "", matched: false };
+}
+
+function isValidWorkHeader(text) {
+  return looksLikeJobTitle(text) && parseJobHeaderLine(text).matched;
+}
+
+// Convert 2-digit years to 4-digit (21 -> 2021, 23 -> 2023)
+function convertWorkYear(dateStr) {
+  if (!dateStr) return dateStr;
+  return dateStr.replace(/(\w+)\s+(\d{2})$/i, (match, month, year) => {
+    const numYear = parseInt(year, 10);
+    // If year is 00-50, assume 2000-2050, otherwise 1950-1999
+    const fullYear = numYear <= 50 ? 2000 + numYear : 1900 + numYear;
+    return `${month} ${fullYear}`;
+  });
+}
+
+// Find the line index where each real job entry starts. A line only
+// starts a new entry when the portion before any trailing/flush-right
+// date (or the whole line, if bulleted with no date) is a valid job
+// header (role keyword + "Role at Org"/"Role, Org" pattern). This keeps
+// wrapped continuation lines - including ones that happen to end in a
+// flush-right date - from being mistaken for a new job.
+function findWorkJobBoundaries(lines) {
+  const datePattern =
+    /(\w+\.?\s+\d{2,4})\s*[-–—]\s*((?:\w+\.?\s+\d{2,4})|present|current)/i;
+  const boundaries = [];
+
+  lines.forEach((line, idx) => {
+    const trimmed = line.trim();
+    if (!trimmed) return;
+
+    const startsWithBullet = /^[●•\-]/.test(trimmed);
+
+    if (startsWithBullet) {
+      const withoutBullet = trimmed.replace(/^[●•\-]\s*/, "");
+      const colonIdx = withoutBullet.indexOf(":");
+      const headerCandidate =
+        colonIdx > 0 ? withoutBullet.substring(0, colonIdx) : withoutBullet;
+      if (isValidWorkHeader(headerCandidate)) {
+        boundaries.push(idx);
+      }
+    } else {
+      const dateMatch = trimmed.match(datePattern);
+      const headerCandidate = dateMatch
+        ? trimmed.slice(0, dateMatch.index).trim()
+        : trimmed;
+      if (headerCandidate && isValidWorkHeader(headerCandidate)) {
+        boundaries.push(idx);
+      }
+    }
+  });
+
+  return boundaries;
+}
+
+function parseWorkJobBlock(blockText) {
+  const datePattern =
+    /(\w+\.?\s+\d{2,4})\s*[-–—]\s*((?:\w+\.?\s+\d{2,4})|present|current)/i;
+  const dateMatch = blockText.match(datePattern);
+  if (!dateMatch) return null;
+
+  const startDate = convertWorkYear(dateMatch[1]);
+  const endDate =
+    dateMatch[2].toLowerCase() === "present" || dateMatch[2].toLowerCase() === "current"
+      ? "Present"
+      : convertWorkYear(dateMatch[2]);
+
+  const withoutDate = blockText.replace(dateMatch[0], "").trim();
+  const lines = withoutDate.split("\n");
+  const firstLine = lines[0] || "";
+  const colonIdx = firstLine.indexOf(":");
+
+  let headerText = "";
+  let descriptionText = "";
+
+  if (colonIdx > 0) {
+    headerText = firstLine.substring(0, colonIdx).replace(/^[●•\-]\s*/, "").trim();
+    const afterColon = firstLine.substring(colonIdx + 1).trim();
+    const remainingLines = lines.slice(1).join(" ").trim();
+    descriptionText = [afterColon, remainingLines].filter((t) => t).join(" ");
+  } else {
+    headerText = firstLine.replace(/^[●•\-]\s*/, "").trim();
+    descriptionText = lines.slice(1).join(" ").trim();
+  }
+
+  const { position, company } = parseJobHeaderLine(headerText);
+
+  const summary = descriptionText
+    .split("\n")
+    .map((l) => l.replace(/^[●•\-]\s*/, "").trim())
+    .filter((l) => l)
+    .join(" ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  return {
+    position: position || "",
+    company: company || "",
+    startDate: startDate,
+    endDate: endDate,
+    summary: summary,
+  };
+}
+
 function parseWorkExperience(text) {
   if (!text) return [];
 
+  const lines = text.split("\n");
+  const boundaryLineIdxs = findWorkJobBoundaries(lines);
+  if (boundaryLineIdxs.length === 0) return [];
+
+  // Convert line indices into character offsets so we can slice out each
+  // job's full block of wrapped lines (header through to the next job's
+  // boundary, or end of text).
+  const lineOffsets = [];
+  let offset = 0;
+  for (const line of lines) {
+    lineOffsets.push(offset);
+    offset += line.length + 1;
+  }
+
   const jobs = [];
+  for (let i = 0; i < boundaryLineIdxs.length; i++) {
+    const startIdx = lineOffsets[boundaryLineIdxs[i]];
+    const endIdx =
+      boundaryLineIdxs[i + 1] !== undefined
+        ? lineOffsets[boundaryLineIdxs[i + 1]]
+        : text.length;
+    const blockText = text.substring(startIdx, endIdx).trim();
 
-  // Find jobs by looking for date patterns: "Month Year - Month Year" or "Month Year - Present"
-  // Support both 2-digit (21) and 4-digit (2021) years
-  const datePattern =
-    /(\w+\.?\s+\d{2,4})\s*[-–—]\s*((?:\w+\.?\s+\d{2,4})|present|current)/gi;
-
-  const dateMatches = [];
-  let match;
-  while ((match = datePattern.exec(text)) !== null) {
-    dateMatches.push({
-      fullDate: match[0],
-      startDate: match[1],
-      endDate: match[2],
-      index: match.index,
-      endIndex: match.index + match[0].length,
-    });
-  }
-
-  if (dateMatches.length === 0) {
-    return [];
-  }
-
-  // Extract job info for each date
-  for (let i = 0; i < dateMatches.length; i++) {
-    const dateInfo = dateMatches[i];
-    const nextDateInfo = dateMatches[i + 1];
-
-    // Get the full line containing the date (might have position on same line)
-    const textBeforeDate = text.substring(0, dateInfo.index);
-    const lines = textBeforeDate.split('\n');
-    const dateLineStart = textBeforeDate.lastIndexOf('\n') + 1;
-    const fullDateLine = text.substring(dateLineStart, dateInfo.endIndex + 50).split('\n')[0];
-
-    let position = "";
-    let company = "";
-
-    // Check if position is on the same line as date (volunteering format: "● Position text    Date")
-    const beforeDateOnSameLine = fullDateLine.substring(0, fullDateLine.indexOf(dateInfo.fullDate)).trim();
-    
-    if (beforeDateOnSameLine.length > 0) {
-      // Position is on same line as date (volunteering format)
-      position = beforeDateOnSameLine.replace(/^[●•]\s*/, '').trim();
-      company = ""; // No separate company line
-    } else {
-      // Position/company are on lines BEFORE the date (professional experience format)
-      const headerLines = lines
-        .slice(-3) // Get last 3 lines before date
-        .map(l => l.trim())
-        .filter(l => l.length > 0 && !l.startsWith('●') && !l.startsWith('•'));
-
-      if (headerLines.length >= 1) {
-        // Last non-empty line before date is usually "Position, Company, Location"
-        const lastLine = headerLines[headerLines.length - 1];
-        
-        // Try to split position and company if comma-separated
-        if (lastLine.includes(',')) {
-          const parts = lastLine.split(',').map(p => p.trim());
-          position = parts[0];
-          company = parts.slice(1).join(', ');
-        } else {
-          position = lastLine;
-          company = headerLines.length >= 2 ? headerLines[headerLines.length - 2] : '';
-        }
-      }
+    const job = parseWorkJobBlock(blockText);
+    if (job && job.startDate) {
+      jobs.push(job);
     }
-
-    // Get text AFTER the date (description)
-    let descStart = dateInfo.endIndex;
-    let descEnd = nextDateInfo ? nextDateInfo.index : text.length;
-    let description = text.substring(descStart, descEnd).trim();
-
-    // Remove the next job's header from this job's description
-    if (nextDateInfo) {
-      const beforeNextDate = text.substring(0, nextDateInfo.index);
-      const allLines = beforeNextDate.split('\n');
-      
-      // Find non-bullet lines at the end (these are next job's header)
-      const nextJobHeaderLines = [];
-      for (let j = allLines.length - 1; j >= 0; j--) {
-        const line = allLines[j].trim();
-        if (line.length === 0) {
-          if (nextJobHeaderLines.length > 0) break;
-        } else if (!line.startsWith('●') && !line.startsWith('•')) {
-          nextJobHeaderLines.unshift(line);
-          if (nextJobHeaderLines.length >= 2) break;
-        } else {
-          break; // Hit a bullet point, stop
-        }
-      }
-
-      // Remove these lines from description
-      if (nextJobHeaderLines.length > 0) {
-        for (const headerLine of nextJobHeaderLines) {
-          description = description.replace(headerLine, '');
-        }
-        description = description.trim();
-      }
-    }
-
-    // Convert 2-digit years to 4-digit (21 -> 2021, 23 -> 2023)
-    const convertYear = (dateStr) => {
-      return dateStr.replace(/(\w+)\s+(\d{2})$/i, (match, month, year) => {
-        const numYear = parseInt(year);
-        // If year is 00-50, assume 2000-2050, otherwise 1950-1999
-        const fullYear = numYear <= 50 ? 2000 + numYear : 1900 + numYear;
-        return `${month} ${fullYear}`;
-      });
-    };
-
-    const startDate = convertYear(dateInfo.startDate);
-    const endDate = dateInfo.endDate.toLowerCase() === 'present' || dateInfo.endDate.toLowerCase() === 'current' 
-      ? 'Present' 
-      : convertYear(dateInfo.endDate);
-
-    jobs.push({
-      position: position,
-      company: company,
-      startDate: startDate,
-      endDate: endDate,
-      summary: description,
-    });
   }
 
   return jobs;

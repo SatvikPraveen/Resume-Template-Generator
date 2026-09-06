@@ -527,68 +527,134 @@ class RobustResumeParser {
   }
   
   /**
+   * Parse a header line into {position, company, matched}.
+   * Detects "Role at Organization" and "Role, Organization" patterns.
+   * `matched` is true only when one of those two patterns was actually
+   * found (as opposed to falling back to treating the whole line as the
+   * position), which callers use to decide whether a line is really a
+   * job header rather than a stray sentence fragment.
+   */
+  parseJobHeader(headerText) {
+    const text = headerText.replace(/^[•\-●]\s*/, '').trim();
+
+    const atMatch = text.match(/^(.+?)\s+at\s+(.+)$/i);
+    if (atMatch) {
+      return {
+        position: atMatch[1].trim(),
+        company: atMatch[2].trim(),
+        matched: true
+      };
+    }
+
+    if (text.includes(',')) {
+      const parts = text.split(',').map(p => p.trim()).filter(p => p);
+      return {
+        position: parts[0] || '',
+        company: parts.slice(1).join(', '),
+        matched: parts.length > 1
+      };
+    }
+
+    return { position: text, company: '', matched: false };
+  }
+
+  /**
+   * A line only counts as a job header if it contains a recognizable role
+   * keyword (Supervisor, Manager, Engineer, etc.) AND matches the
+   * "Role at Organization" or "Role, Organization" pattern. This prevents
+   * wrapped mid-sentence fragments (e.g. a PDF line-wrap artifact like
+   * "Child Labor rehab, rescuing 23 children,") from being mistaken for a
+   * new job's header.
+   */
+  isValidJobHeader(text) {
+    if (!this.looksLikeJobTitle(text)) return false;
+    return this.parseJobHeader(text).matched;
+  }
+
+  /**
    * Find where each job starts
    */
   findJobBoundaries(text) {
     const boundaries = [];
     const lines = text.split('\n');
     const datePattern = /([A-Z][a-z]+\.?\s+\d{2,4})\s*[-–—]\s*((?:[A-Z][a-z]+\.?\s+\d{2,4})|Present|Current)/i;
-    
+
     let currentIndex = 0;
-    
+
     for (const line of lines) {
       const trimmed = line.trim();
-      
+
       // Skip empty lines
       if (!trimmed) {
         currentIndex += line.length + 1;
         continue;
       }
-      
+
       const startsWithBullet = /^[•\-●]/.test(trimmed);
-      const hasDate = datePattern.test(trimmed);
-      
+
       // Job boundary markers:
-      // 1. Non-bullet line with date AND substantial text = Professional job
-      // 2. Bullet with "at" or ":" = Volunteering job
-      
-      if (!startsWithBullet && hasDate && trimmed.length > 20) {
-        boundaries.push({ index: currentIndex, type: 'professional' });
-      } else if (startsWithBullet) {
+      // 1. Non-bullet line with a valid "Role at Org"/"Role, Org" header
+      //    (a trailing/flush-right date on that same line is fine and is
+      //    just this entry's end date, NOT a reason on its own to start a
+      //    new entry) = Professional job
+      // 2. Bullet line with a valid "Role at Org"/"Role, Org" header,
+      //    optionally followed by ":" and a description = Volunteering job
+      //
+      // A date appearing on a non-bullet line is deliberately NOT enough
+      // by itself to mark a boundary: a wrapped continuation line that
+      // happens to end in a flush-right date (e.g. "...community impact.
+      // May 21 - June 21") must stay part of the current entry rather
+      // than being mistaken for a new job's header line.
+
+      if (!startsWithBullet) {
+        const dateMatch = trimmed.match(datePattern);
+        const headerCandidate = dateMatch
+          ? trimmed.slice(0, dateMatch.index).trim()
+          : trimmed;
+
+        if (headerCandidate && this.isValidJobHeader(headerCandidate)) {
+          boundaries.push({ index: currentIndex, type: 'professional' });
+        }
+      } else {
         const withoutBullet = trimmed.replace(/^[•\-●]\s*/, '');
-        if (withoutBullet.toLowerCase().includes(' at ') || withoutBullet.includes(':')) {
+        const colonIdx = withoutBullet.indexOf(':');
+        const headerCandidate = colonIdx > 0
+          ? withoutBullet.substring(0, colonIdx)
+          : withoutBullet;
+
+        if (this.isValidJobHeader(headerCandidate)) {
           boundaries.push({ index: currentIndex, type: 'volunteering' });
         }
       }
-      
+
       currentIndex += line.length + 1;
     }
-    
+
     return boundaries;
   }
-  
+
   /**
    * Parse a single job block
    */
   parseJobBlock(blockText, jobType) {
     const datePattern = /([A-Z][a-z]+\.?\s+\d{2,4})\s*[-–—]\s*((?:[A-Z][a-z]+\.?\s+\d{2,4})|Present|Current)/i;
     const dateMatch = blockText.match(datePattern);
-    
+
     if (!dateMatch) return null;
-    
+
     // Convert dates
     let startDate = dateMatch[1].replace(/\b(\d{2})\b/, (m) => this.convertToFullYear(m));
     let endDate = dateMatch[2];
     if (!/present|current/i.test(endDate)) {
       endDate = endDate.replace(/\b(\d{2})\b/, (m) => this.convertToFullYear(m));
     }
-    
+
     // Remove date to get header + description
     const withoutDate = blockText.replace(dateMatch[0], '').trim();
-    
+
     let headerText = '';
     let descriptionText = '';
-    
+
     if (jobType === 'professional') {
       // Professional: first line is header, rest is description
       const lines = withoutDate.split('\n');
@@ -598,7 +664,7 @@ class RobustResumeParser {
       // Volunteering: bullet line up to colon is header, rest is description
       const firstLine = withoutDate.split('\n')[0];
       const colonIdx = firstLine.indexOf(':');
-      
+
       if (colonIdx > 0) {
         headerText = firstLine.substring(0, colonIdx).replace(/^[•\-●]\s*/, '').trim();
         const afterColon = firstLine.substring(colonIdx + 1).trim();
@@ -609,30 +675,17 @@ class RobustResumeParser {
         descriptionText = withoutDate.split('\n').slice(1).join('\n').trim();
       }
     }
-    
-    // Parse position and company from header
-    let position = '';
-    let company = '';
-    
-    if (headerText.toLowerCase().includes(' at ')) {
-      const parts = headerText.split(/\s+at\s+/i);
-      position = parts[0].trim();
-      company = parts[1] ? parts[1].split(',')[0].trim() : '';
-    } else if (headerText.includes(',')) {
-      const parts = headerText.split(',').map(p => p.trim());
-      position = parts[0];
-      company = parts.slice(1).join(', ');
-    } else {
-      position = headerText;
-    }
-    
+
+    // Parse position and company from header ("Role at Org" / "Role, Org")
+    const { position, company } = this.parseJobHeader(headerText);
+
     // Clean description: remove bullets, join
     const description = descriptionText
       .split('\n')
       .map(l => l.replace(/^[•\-●]\s*/, '').trim())
       .filter(l => l)
       .join(' ');
-    
+
     return {
       position: position || 'Position',
       company: company || 'Company',
@@ -905,9 +958,10 @@ class RobustResumeParser {
     const titleKeywords = [
       'engineer', 'developer', 'manager', 'analyst', 'designer',
       'consultant', 'director', 'specialist', 'coordinator', 'lead',
-      'senior', 'junior', 'associate', 'principal', 'staff'
+      'leader', 'senior', 'junior', 'associate', 'principal', 'staff',
+      'supervisor', 'intern', 'officer'
     ];
-    
+
     const lower = text.toLowerCase();
     return titleKeywords.some(kw => lower.includes(kw));
   }
@@ -918,28 +972,27 @@ class RobustResumeParser {
   extractJobsByCompanyIndicators(text) {
     const jobs = [];
     const lines = text.split('\n').map(l => l.trim()).filter(l => l);
-    
+
     let currentJob = null;
-    
+
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
-      const lower = line.toLowerCase();
-      
-      // Check if line contains company indicator
-      const hasCompanyIndicator = this.companyIndicators.some(ind => 
-        lower.includes(ind + '.') || lower.includes(ind + ',') || lower.includes(' ' + ind)
-      );
 
-      if (hasCompanyIndicator || this.looksLikeJobTitle(line)) {
+      // Only start a new job when the line is a real header: it must
+      // contain a role keyword AND match "Role at Org"/"Role, Org" -
+      // otherwise it's a wrapped continuation line and belongs in the
+      // current job's summary.
+      if (this.isValidJobHeader(line)) {
         // Save previous job
         if (currentJob) {
           jobs.push(currentJob);
         }
-        
+
         // Start new job
+        const { position, company } = this.parseJobHeader(line);
         currentJob = {
-          position: this.looksLikeJobTitle(line) ? line : lines[i - 1] || '',
-          company: hasCompanyIndicator ? line : '',
+          position: position || '',
+          company: company || '',
           startDate: '',
           endDate: '',
           summary: ''
@@ -949,7 +1002,7 @@ class RobustResumeParser {
         currentJob.summary += (currentJob.summary ? '\n' : '') + line;
       }
     }
-    
+
     // Add last job
     if (currentJob) {
       jobs.push(currentJob);
