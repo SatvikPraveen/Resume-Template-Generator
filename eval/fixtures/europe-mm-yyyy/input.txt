@@ -1,0 +1,29 @@
+CURRICULUM VITAE
+
+Lukas Meier
+Data Analyst
+Zürichstrasse 12, Zurich, Switzerland
+lukas.meier@example.ch | +41 44 555 12 34 | www.lukasmeier.ch
+
+PROFILE
+Analytical professional turning messy operational data into decisions for retail and logistics companies.
+
+WORK EXPERIENCE
+03/2020 – 12/2023  Data Analyst, Helvetia Retail AG, Zurich
+- Automated weekly sales reporting with Python and Power BI, saving 12 hours per week.
+- Built a demand forecasting model that reduced stock-outs by 18%.
+
+09/2017 – 02/2020  Junior Analyst, Alpine Logistics GmbH, Bern
+- Maintained the KPI dashboard used by 30 depot managers.
+
+EDUCATION
+09/2014 – 07/2017  Bachelor of Science in Business Informatics, University of Zurich
+
+LANGUAGES
+German (native), English (C1), French (B2)
+
+SKILLS
+Python, SQL, Power BI, Tableau, Excel, dbt
+
+INTERESTS
+Trail running, chess, photography

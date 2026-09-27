@@ -1,0 +1,84 @@
+{
+  "basics": {
+    "name": "Lukas Meier",
+    "label": "Data Analyst",
+    "email": "lukas.meier@example.ch",
+    "phone": "+41 44 555 12 34",
+    "url": "https://www.lukasmeier.ch",
+    "location": {
+      "city": "Zurich",
+      "region": "Switzerland"
+    },
+    "summary": "Analytical professional turning messy operational data into decisions for retail and logistics companies."
+  },
+  "work": [
+    {
+      "name": "Helvetia Retail AG",
+      "position": "Data Analyst",
+      "startDate": "2020-03",
+      "endDate": "2023-12",
+      "highlights": [
+        "Automated weekly sales reporting with Python and Power BI, saving 12 hours per week.",
+        "Built a demand forecasting model that reduced stock-outs by 18%."
+      ],
+      "location": "Zurich"
+    },
+    {
+      "name": "Alpine Logistics GmbH",
+      "position": "Junior Analyst",
+      "startDate": "2017-09",
+      "endDate": "2020-02",
+      "highlights": [
+        "Maintained the KPI dashboard used by 30 depot managers."
+      ],
+      "location": "Bern"
+    }
+  ],
+  "education": [
+    {
+      "institution": "University of Zurich",
+      "studyType": "Bachelor's",
+      "area": "Business Informatics",
+      "startDate": "2014-09",
+      "endDate": "2017-07"
+    }
+  ],
+  "skills": [
+    {
+      "name": "Skills",
+      "keywords": [
+        "Python",
+        "SQL",
+        "Power BI",
+        "Tableau",
+        "Excel",
+        "dbt"
+      ]
+    }
+  ],
+  "languages": [
+    {
+      "language": "German",
+      "fluency": "native"
+    },
+    {
+      "language": "English",
+      "fluency": "C1"
+    },
+    {
+      "language": "French",
+      "fluency": "B2"
+    }
+  ],
+  "interests": [
+    {
+      "name": "Trail running"
+    },
+    {
+      "name": "chess"
+    },
+    {
+      "name": "photography"
+    }
+  ]
+}

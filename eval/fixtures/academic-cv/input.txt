@@ -1,0 +1,33 @@
+Dr. Amara Okafor
+Cambridge, MA · amara.okafor@example.edu · +1 617 555 0199 · scholar.google.com/citations?user=abc123
+
+Education
+Massachusetts Institute of Technology, Cambridge, MA
+Ph.D. in Electrical Engineering and Computer Science, 2018 – 2023
+Dissertation: Sample-efficient reinforcement learning for robotic manipulation
+
+University of Lagos, Lagos, Nigeria
+B.Sc. in Computer Engineering, First Class Honours, 2013 – 2017
+
+Research Experience
+Postdoctoral Researcher, MIT CSAIL	Sep 2023 – Present
+- Lead a team of three students studying offline RL for surgical robotics.
+- Secured a $250K NSF grant as co-PI.
+
+Research Intern, DeepMind	Jun 2021 – Sep 2021
+- Developed model-based exploration methods evaluated on 40 Atari environments.
+
+Publications
+Okafor, A., Smith, J. (2023). Sample-efficient manipulation with learned dynamics. NeurIPS 2023.
+Okafor, A. (2022). Offline reinforcement learning under distribution shift. ICML 2022.
+
+Honors and Awards
+NSF Graduate Research Fellowship, 2019
+Best Paper Award, CoRL 2022
+
+Teaching Experience
+Teaching Assistant, 6.036 Introduction to Machine Learning, MIT	Spring 2020
+
+Skills
+Programming: Python, C++, JAX, PyTorch
+Languages: English (native), Yoruba (native), French (intermediate)

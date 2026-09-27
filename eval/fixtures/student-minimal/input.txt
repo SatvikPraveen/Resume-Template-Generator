@@ -1,0 +1,24 @@
+Priya Natarajan
+priya.n@example.com • 469-555-0123 • Dallas, TX • github.com/priyan
+
+Education
+The University of Texas at Dallas	Expected May 2026
+Bachelor of Science in Computer Science	GPA 3.72
+Relevant Coursework: Data Structures, Operating Systems, Machine Learning, Databases
+
+Projects
+Campus Ride Share	Aug 2024 – Dec 2024
+Technologies: React Native, Firebase, Google Maps API
+• Built a ride-matching app used by 300 students during a pilot semester.
+• Implemented real-time location sharing and push notifications.
+
+Sentiment Dashboard	Spring 2024
+Technologies: Python, Flask, scikit-learn
+• Classified 50K product reviews with 91% accuracy and visualized trends.
+
+Leadership
+Vice President, Women in Computing	Sep 2023 – Present
+• Grew membership from 40 to 120 and organized a 200-person hackathon.
+
+Skills
+Python, Java, C, JavaScript, React, SQL, Git, Linux

@@ -1,0 +1,89 @@
+{
+  "basics": {
+    "name": "Elena Vasquez",
+    "label": "Data Engineer",
+    "email": "elena.vasquez@example.com",
+    "phone": "(303) 555-0188",
+    "location": {
+      "city": "Denver",
+      "region": "CO"
+    },
+    "profiles": [
+      {
+        "network": "GitHub",
+        "url": "https://github.com/elenav"
+      }
+    ],
+    "summary": "Data engineer specialising in streaming pipelines and lakehouse architectures for retail analytics."
+  },
+  "work": [
+    {
+      "name": "Summit Retail Group",
+      "position": "Senior Data Engineer",
+      "location": "Denver, CO",
+      "startDate": "2021-04",
+      "highlights": [
+        "Migrated 30 batch jobs to a Spark Structured Streaming platform, cutting data latency from 6 hours to 5 minutes.",
+        "Designed the medallion lakehouse on Delta Lake used by 40 analysts."
+      ]
+    },
+    {
+      "name": "Boulder Insights LLC",
+      "position": "Data Engineer",
+      "location": "Boulder, CO",
+      "startDate": "2018-07",
+      "endDate": "2021-03",
+      "highlights": [
+        "Built dbt models and Airflow DAGs powering the executive KPI dashboard."
+      ]
+    }
+  ],
+  "education": [
+    {
+      "institution": "Colorado State University",
+      "studyType": "Bachelor's",
+      "area": "Computer Science",
+      "startDate": "2014-08",
+      "endDate": "2018-05",
+      "location": "Fort Collins, CO"
+    }
+  ],
+  "skills": [
+    {
+      "name": "Languages",
+      "keywords": [
+        "Python",
+        "SQL",
+        "Scala"
+      ]
+    },
+    {
+      "name": "Platforms",
+      "keywords": [
+        "Spark",
+        "Airflow",
+        "dbt",
+        "Snowflake",
+        "AWS (S3, Glue, EMR)"
+      ]
+    }
+  ],
+  "projects": [
+    {
+      "name": "Open Lakehouse Benchmark",
+      "keywords": [
+        "Spark",
+        "Delta Lake"
+      ],
+      "highlights": [
+        "Reproducible benchmark comparing table formats on 1 TB of synthetic retail data."
+      ]
+    }
+  ],
+  "certificates": [
+    {
+      "name": "Databricks Certified Data Engineer Professional",
+      "date": "2023"
+    }
+  ]
+}

@@ -1,0 +1,51 @@
+{
+  "basics": {
+    "name": "JORDAN RIVERA",
+    "email": "jordan.rivera@example.com",
+    "phone": "512-555-0178",
+    "location": { "city": "Austin", "region": "TX", "postalCode": "78701" },
+    "summary": "Registered nurse transitioning into clinical informatics, combining eight years of bedside experience with recent training in data analysis."
+  },
+  "work": [
+    {
+      "name": "St. Mary's Medical Center",
+      "position": "Charge Nurse",
+      "startDate": "2019-01",
+      "highlights": [
+        "Coordinate a 24-bed telemetry unit and supervise a team of 12 nurses.",
+        "Led the rollout of a new electronic medication administration record, cutting documentation errors by 30%."
+      ]
+    },
+    {
+      "name": "Travis County Hospital",
+      "position": "Staff Nurse",
+      "startDate": "2015-06",
+      "endDate": "2018-12",
+      "highlights": ["Provided direct patient care in a high-volume emergency department."]
+    }
+  ],
+  "volunteer": [
+    {
+      "organization": "Austin Free Clinic",
+      "position": "Health Fair Coordinator",
+      "startDate": "2020",
+      "highlights": ["Organize quarterly screenings for uninsured residents."]
+    }
+  ],
+  "education": [
+    {
+      "institution": "University of Texas at Austin",
+      "studyType": "Certificate",
+      "area": "Health Informatics",
+      "endDate": "2023"
+    },
+    {
+      "institution": "Texas State University",
+      "studyType": "Bachelor's",
+      "area": "Nursing",
+      "endDate": "2015"
+    }
+  ],
+  "skills": [{ "name": "Skills", "keywords": ["Epic EHR", "SQL", "Tableau", "Patient safety", "Team leadership"] }],
+  "interests": [{ "name": "Community health" }, { "name": "cycling" }]
+}

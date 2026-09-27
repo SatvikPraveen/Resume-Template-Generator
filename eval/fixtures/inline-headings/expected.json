@@ -1,0 +1,51 @@
+{
+  "basics": {
+    "name": "Samuel Ortiz-Baker",
+    "label": "Product Manager",
+    "email": "samuel.ob@example.com",
+    "phone": "+1 (312) 555-0107",
+    "location": { "city": "Chicago", "region": "IL" },
+    "summary": "Product manager with a track record of launching B2B SaaS features from discovery to GA."
+  },
+  "work": [
+    {
+      "name": "Lakeshore Software",
+      "position": "Product Manager",
+      "location": "Chicago, IL",
+      "startDate": "2021-01",
+      "highlights": [
+        "Own the roadmap for a payments product generating $12M ARR.",
+        "Ran 60+ customer interviews to reprioritize the 2023 roadmap."
+      ]
+    },
+    {
+      "name": "Lakeshore Software",
+      "position": "Associate Product Manager",
+      "startDate": "2019-07",
+      "endDate": "2020-12",
+      "highlights": ["Shipped self-serve onboarding, lifting activation from 31% to 47%."]
+    },
+    {
+      "name": "Prairie Consulting",
+      "position": "Business Analyst",
+      "startDate": "2017",
+      "endDate": "2019",
+      "highlights": ["Modeled pricing scenarios for mid-market clients."]
+    }
+  ],
+  "education": [
+    {
+      "institution": "Kellogg School of Management, Northwestern University",
+      "studyType": "MBA",
+      "endDate": "2019"
+    },
+    {
+      "institution": "University of Illinois Urbana-Champaign",
+      "studyType": "Bachelor's",
+      "area": "Economics",
+      "endDate": "2017"
+    }
+  ],
+  "skills": [{ "name": "Skills", "keywords": ["Product strategy", "SQL", "Figma", "Jira", "A/B testing", "Roadmapping"] }],
+  "certificates": [{ "name": "Certified Scrum Product Owner", "issuer": "Scrum Alliance", "date": "2020" }]
+}

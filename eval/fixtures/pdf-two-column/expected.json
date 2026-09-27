@@ -1,0 +1,68 @@
+{
+  "basics": {
+    "name": "Rahul Menon",
+    "label": "UX Designer",
+    "email": "rahul.menon@example.in",
+    "phone": "+91 98765 43210",
+    "location": {
+      "city": "Bengaluru",
+      "region": "India"
+    },
+    "summary": "Designer with six years shaping mobile banking experiences used by millions of customers."
+  },
+  "work": [
+    {
+      "name": "Nimbus Fintech",
+      "position": "Lead UX Designer",
+      "startDate": "2020-02",
+      "highlights": [
+        "Led the redesign of the payments flow, lifting completion rate by 22%.",
+        "Built and maintained the design system across iOS, Android and web."
+      ]
+    },
+    {
+      "name": "Pixelworks Studio",
+      "position": "UX Designer",
+      "startDate": "2017-06",
+      "endDate": "2020-01",
+      "highlights": [
+        "Ran usability studies with 150+ participants for retail clients."
+      ]
+    }
+  ],
+  "education": [
+    {
+      "institution": "National Institute of Design",
+      "studyType": "Master's",
+      "area": "Interaction Design",
+      "startDate": "2015",
+      "endDate": "2017"
+    }
+  ],
+  "skills": [
+    {
+      "name": "Skills",
+      "keywords": [
+        "Figma",
+        "Prototyping",
+        "User Research",
+        "Design Systems",
+        "Accessibility"
+      ]
+    }
+  ],
+  "languages": [
+    {
+      "language": "English",
+      "fluency": "fluent"
+    },
+    {
+      "language": "Hindi",
+      "fluency": "native"
+    },
+    {
+      "language": "Malayalam",
+      "fluency": "native"
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+Samuel Ortiz-Baker
+Product Manager | samuel.ob@example.com | +1 (312) 555-0107 | Chicago, IL
+
+Summary: Product manager with a track record of launching B2B SaaS features from discovery to GA.
+
+Experience:
+Product Manager, Lakeshore Software, Chicago, IL — Jan '21 – Present
+* Own the roadmap for a payments product generating $12M ARR.
+* Ran 60+ customer interviews to reprioritize the 2023 roadmap.
+
+Associate Product Manager, Lakeshore Software — Jul '19 – Dec '20
+* Shipped self-serve onboarding, lifting activation from 31% to 47%.
+
+Business Analyst, Prairie Consulting — 2017 – 2019
+* Modeled pricing scenarios for mid-market clients.
+
+Education:
+MBA, Kellogg School of Management, Northwestern University, 2019
+B.A. in Economics, University of Illinois Urbana-Champaign, 2017
+
+Skills: Product strategy, SQL, Figma, Jira, A/B testing, Roadmapping
+Certifications: Certified Scrum Product Owner (Scrum Alliance), 2020

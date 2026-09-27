@@ -1,0 +1,14 @@
+{
+  "macroF1": 1,
+  "fixtures": {
+    "academic-cv": 1,
+    "career-changer": 1,
+    "chronological-tech": 1,
+    "europe-mm-yyyy": 1,
+    "inline-headings": 1,
+    "pdf-caps-nobullet": 1,
+    "pdf-classic-bold": 1,
+    "pdf-two-column": 1,
+    "student-minimal": 1
+  }
+}

@@ -1,0 +1,41 @@
+Maya Chen
+Senior Software Engineer
+maya.chen@example.com | (415) 555-0142 | San Francisco, CA | linkedin.com/in/mayachen | github.com/mayachen
+
+SUMMARY
+Backend engineer with 7 years of experience building distributed systems and developer platforms. Led migrations serving 40M daily requests with zero downtime.
+
+EXPERIENCE
+Senior Software Engineer | Northwind Cloud	Mar 2021 – Present
+San Francisco, CA
+• Designed a multi-region event pipeline on Kafka and Flink handling 2B events/day.
+• Cut p99 latency of the billing API by 63% through query planning and caching.
+• Mentored four engineers; two were promoted within a year.
+
+Software Engineer II | Contoso Analytics	Jun 2018 – Feb 2021
+Seattle, WA
+• Built the ingestion service for a real-time analytics product in Go and PostgreSQL.
+• Introduced contract testing, reducing integration incidents by 40%.
+
+Software Engineer | Fabrikam Labs	Aug 2016 – May 2018
+• Shipped the first version of the customer dashboard in React and Django.
+
+EDUCATION
+University of Washington	Sep 2012 – Jun 2016
+B.S. in Computer Science, GPA: 3.8/4.0
+Seattle, WA
+
+SKILLS
+Languages: Go, Python, TypeScript, SQL
+Infrastructure: Kubernetes, Terraform, AWS (EKS, RDS, S3), Kafka
+Practices: Distributed systems, Observability, CI/CD
+
+PROJECTS
+Trace Lens | Go, OpenTelemetry
+• Open-source CLI that summarizes distributed traces into a single latency budget view.
+Budget Bot | Python, Slack API
+• Slack bot that alerts teams when cloud spend deviates from forecast.
+
+CERTIFICATIONS
+AWS Certified Solutions Architect – Associate, 2022
+Certified Kubernetes Administrator (CNCF) 2021

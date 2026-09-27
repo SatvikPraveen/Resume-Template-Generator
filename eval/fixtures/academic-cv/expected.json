@@ -1,0 +1,106 @@
+{
+  "basics": {
+    "name": "Dr. Amara Okafor",
+    "email": "amara.okafor@example.edu",
+    "phone": "+1 617 555 0199",
+    "location": {
+      "city": "Cambridge",
+      "region": "MA"
+    },
+    "profiles": [
+      {
+        "network": "Google Scholar"
+      }
+    ]
+  },
+  "work": [
+    {
+      "name": "MIT CSAIL",
+      "position": "Postdoctoral Researcher",
+      "startDate": "2023-09",
+      "highlights": [
+        "Lead a team of three students studying offline RL for surgical robotics.",
+        "Secured a $250K NSF grant as co-PI."
+      ]
+    },
+    {
+      "name": "DeepMind",
+      "position": "Research Intern",
+      "startDate": "2021-06",
+      "endDate": "2021-09",
+      "highlights": [
+        "Developed model-based exploration methods evaluated on 40 Atari environments."
+      ]
+    },
+    {
+      "name": "MIT",
+      "position": "Teaching Assistant",
+      "startDate": "2020-03"
+    }
+  ],
+  "education": [
+    {
+      "institution": "Massachusetts Institute of Technology",
+      "studyType": "PhD",
+      "area": "Electrical Engineering and Computer Science",
+      "startDate": "2018",
+      "endDate": "2023",
+      "location": "Cambridge, MA"
+    },
+    {
+      "institution": "University of Lagos",
+      "studyType": "Bachelor's",
+      "area": "Computer Engineering",
+      "startDate": "2013",
+      "endDate": "2017",
+      "location": "Lagos, Nigeria",
+      "score": "First Class"
+    }
+  ],
+  "skills": [
+    {
+      "name": "Programming",
+      "keywords": [
+        "Python",
+        "C++",
+        "JAX",
+        "PyTorch"
+      ]
+    }
+  ],
+  "publications": [
+    {
+      "name": "Okafor, A., Smith, J. Sample-efficient manipulation with learned dynamics. NeurIPS",
+      "releaseDate": "2023"
+    },
+    {
+      "name": "Okafor, A. Offline reinforcement learning under distribution shift. ICML",
+      "releaseDate": "2022"
+    }
+  ],
+  "awards": [
+    {
+      "title": "NSF Graduate Research Fellowship",
+      "date": "2019"
+    },
+    {
+      "title": "Best Paper Award",
+      "awarder": "CoRL",
+      "date": "2022"
+    }
+  ],
+  "languages": [
+    {
+      "language": "English",
+      "fluency": "native"
+    },
+    {
+      "language": "Yoruba",
+      "fluency": "native"
+    },
+    {
+      "language": "French",
+      "fluency": "intermediate"
+    }
+  ]
+}

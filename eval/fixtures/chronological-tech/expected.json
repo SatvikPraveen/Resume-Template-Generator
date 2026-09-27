@@ -1,0 +1,77 @@
+{
+  "basics": {
+    "name": "Maya Chen",
+    "label": "Senior Software Engineer",
+    "email": "maya.chen@example.com",
+    "phone": "(415) 555-0142",
+    "location": { "city": "San Francisco", "region": "CA" },
+    "summary": "Backend engineer with 7 years of experience building distributed systems and developer platforms. Led migrations serving 40M daily requests with zero downtime.",
+    "profiles": [
+      { "network": "LinkedIn", "url": "https://linkedin.com/in/mayachen" },
+      { "network": "GitHub", "url": "https://github.com/mayachen" }
+    ]
+  },
+  "work": [
+    {
+      "name": "Northwind Cloud",
+      "position": "Senior Software Engineer",
+      "location": "San Francisco, CA",
+      "startDate": "2021-03",
+      "highlights": [
+        "Designed a multi-region event pipeline on Kafka and Flink handling 2B events/day.",
+        "Cut p99 latency of the billing API by 63% through query planning and caching.",
+        "Mentored four engineers; two were promoted within a year."
+      ]
+    },
+    {
+      "name": "Contoso Analytics",
+      "position": "Software Engineer II",
+      "location": "Seattle, WA",
+      "startDate": "2018-06",
+      "endDate": "2021-02",
+      "highlights": [
+        "Built the ingestion service for a real-time analytics product in Go and PostgreSQL.",
+        "Introduced contract testing, reducing integration incidents by 40%."
+      ]
+    },
+    {
+      "name": "Fabrikam Labs",
+      "position": "Software Engineer",
+      "startDate": "2016-08",
+      "endDate": "2018-05",
+      "highlights": ["Shipped the first version of the customer dashboard in React and Django."]
+    }
+  ],
+  "education": [
+    {
+      "institution": "University of Washington",
+      "studyType": "Bachelor's",
+      "area": "Computer Science",
+      "startDate": "2012-09",
+      "endDate": "2016-06",
+      "score": "3.8/4.0",
+      "location": "Seattle, WA"
+    }
+  ],
+  "skills": [
+    { "name": "Languages", "keywords": ["Go", "Python", "TypeScript", "SQL"] },
+    { "name": "Infrastructure", "keywords": ["Kubernetes", "Terraform", "AWS (EKS, RDS, S3)", "Kafka"] },
+    { "name": "Practices", "keywords": ["Distributed systems", "Observability", "CI/CD"] }
+  ],
+  "projects": [
+    {
+      "name": "Trace Lens",
+      "keywords": ["Go", "OpenTelemetry"],
+      "highlights": ["Open-source CLI that summarizes distributed traces into a single latency budget view."]
+    },
+    {
+      "name": "Budget Bot",
+      "keywords": ["Python", "Slack API"],
+      "highlights": ["Slack bot that alerts teams when cloud spend deviates from forecast."]
+    }
+  ],
+  "certificates": [
+    { "name": "AWS Certified Solutions Architect – Associate", "date": "2022" },
+    { "name": "Certified Kubernetes Administrator", "issuer": "CNCF", "date": "2021" }
+  ]
+}

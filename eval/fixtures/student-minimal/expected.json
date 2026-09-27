@@ -1,0 +1,85 @@
+{
+  "basics": {
+    "name": "Priya Natarajan",
+    "email": "priya.n@example.com",
+    "phone": "469-555-0123",
+    "location": {
+      "city": "Dallas",
+      "region": "TX"
+    },
+    "profiles": [
+      {
+        "network": "GitHub",
+        "url": "https://github.com/priyan"
+      }
+    ]
+  },
+  "education": [
+    {
+      "institution": "The University of Texas at Dallas",
+      "studyType": "Bachelor's",
+      "area": "Computer Science",
+      "endDate": "2026-05",
+      "score": "3.72",
+      "courses": [
+        "Data Structures",
+        "Operating Systems",
+        "Machine Learning",
+        "Databases"
+      ]
+    }
+  ],
+  "projects": [
+    {
+      "name": "Campus Ride Share",
+      "startDate": "2024-08",
+      "endDate": "2024-12",
+      "keywords": [
+        "React Native",
+        "Firebase",
+        "Google Maps API"
+      ],
+      "highlights": [
+        "Built a ride-matching app used by 300 students during a pilot semester.",
+        "Implemented real-time location sharing and push notifications."
+      ]
+    },
+    {
+      "name": "Sentiment Dashboard",
+      "startDate": "2024-03",
+      "keywords": [
+        "Python",
+        "Flask",
+        "scikit-learn"
+      ],
+      "highlights": [
+        "Classified 50K product reviews with 91% accuracy and visualized trends."
+      ]
+    }
+  ],
+  "volunteer": [
+    {
+      "organization": "Women in Computing",
+      "position": "Vice President",
+      "startDate": "2023-09",
+      "highlights": [
+        "Grew membership from 40 to 120 and organized a 200-person hackathon."
+      ]
+    }
+  ],
+  "skills": [
+    {
+      "name": "Skills",
+      "keywords": [
+        "Python",
+        "Java",
+        "C",
+        "JavaScript",
+        "React",
+        "SQL",
+        "Git",
+        "Linux"
+      ]
+    }
+  ]
+}

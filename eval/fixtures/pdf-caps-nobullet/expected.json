@@ -1,0 +1,68 @@
+{
+  "basics": {
+    "name": "Grace Whitfield",
+    "email": "grace.w@example.co.uk",
+    "phone": "+44 20 7946 0958",
+    "location": {
+      "city": "London",
+      "region": "United Kingdom"
+    },
+    "summary": "Chartered accountant moving into financial data analysis, with a record of automating month-end reporting."
+  },
+  "work": [
+    {
+      "name": "Thames & Co",
+      "position": "Senior Accountant",
+      "startDate": "2019-09",
+      "endDate": "2024-06",
+      "highlights": [
+        "Automated consolidation workbooks with Python, saving three days each month.",
+        "Supervised a team of four during two statutory audits."
+      ]
+    },
+    {
+      "name": "Riverside Audit LLP",
+      "position": "Audit Associate",
+      "startDate": "2016-09",
+      "endDate": "2019-08",
+      "highlights": [
+        "Performed substantive testing for FTSE 250 clients."
+      ]
+    }
+  ],
+  "education": [
+    {
+      "institution": "University of Manchester",
+      "studyType": "Bachelor's",
+      "area": "Accounting and Finance",
+      "startDate": "2013",
+      "endDate": "2016"
+    }
+  ],
+  "skills": [
+    {
+      "name": "Finance",
+      "keywords": [
+        "IFRS",
+        "Consolidation",
+        "Forecasting"
+      ]
+    },
+    {
+      "name": "Tools",
+      "keywords": [
+        "Excel",
+        "Python",
+        "Power BI",
+        "SAP"
+      ]
+    }
+  ],
+  "certificates": [
+    {
+      "name": "ACA",
+      "issuer": "ICAEW",
+      "date": "2019"
+    }
+  ]
+}
