@@ -107,26 +107,27 @@ git push origin feature/your-feature-name
 
 ## 💻 Development Setup
 
-### Prerequisites
-
-- Node.js 12+ (optional, only for certain tools)
-- Python 3.7+ (for local server)
-- Modern web browser
-- Git
-
-### Local Development
+The app is static (no build step). Node 20+ is needed only for tests and the evaluation harness.
 
 ```bash
-# Clone the repository
-git clone https://github.com/SatvikPraveen/resume-template-generator.git
-cd resume-template-generator
-
-# Start a local server
-python -m http.server 8000
-
-# Open in browser
-# Navigate to http://localhost:8000
+npm install          # dev dependencies: pdfjs-dist (Node build) and pdfkit (fixture generation)
+npm run serve        # serve the app at http://localhost:8000
+npm test             # unit tests (node --test)
+npm run eval         # score every fixture in eval/fixtures/, write eval/results.json
+npm run eval:check   # fail if any fixture regresses against eval/baseline.json (runs in CI)
+npm run fixtures:pdf # regenerate the synthetic PDF fixtures
 ```
+
+### Parser changes
+
+1. Reproduce the problem as a fixture: create `eval/fixtures/<name>/` with `input.txt` (or `input.pdf`) and an `expected.json` containing only the fields you assert. Fixtures must be fictional; never commit a real person's résumé.
+2. Run `npm run eval -- --verbose --only <name>` and read the field-level mismatches.
+3. Fix the rule (see `docs/ARCHITECTURE.md` for where each decision lives) and add a unit test in `test/` when the fix is a reusable primitive (a date shape, a heading phrase, a geometry rule).
+4. Run `npm test && npm run eval`. If scores improved, refresh the baseline with `npm run eval -- --update` and commit `eval/baseline.json` with your change.
+
+### Template changes
+
+Templates receive the escaped view model from `src/render/model.js`; never interpolate raw résumé text. Use `formatDateRange` and `renderEntryBody` rather than `new Date()` or hand-rolled lists, and run `npm test` — the pipeline test renders every template and checks for unescaped HTML and "Invalid Date".
 
 ---
 

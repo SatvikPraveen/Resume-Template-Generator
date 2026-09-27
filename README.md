@@ -1,420 +1,197 @@
 # Resume Template Generator
 
-**Transform your resume into 12 beautiful, professionally-designed formats with a single click.**
+**A layout-aware resume parser that turns a PDF into a [JSON Resume](https://jsonresume.org/schema/) document and renders it in 12 templates. Runs entirely in the browser. Measured against a fixture corpus in CI.**
 
-A powerful, locally-run web application that extracts data from PDF resumes and renders them through multiple distinct template designs. No data leaves your device—all processing happens in your browser.
+[![CI](https://github.com/SatvikPraveen/Resume-Template-Generator/actions/workflows/ci.yml/badge.svg)](https://github.com/SatvikPraveen/Resume-Template-Generator/actions/workflows/ci.yml)
 
-> 🚀 **[Live Demo - Try it now!](https://satvikpraveen.github.io/Resume-Template-Generator/)**
-
----
-
-## 📋 Features
-
-✅ **PDF Resume Parsing** - Extract text, work experience, education, skills, and projects from PDF files  
-✅ **12 Unique Templates** - Tech, Dark, Modern, Creative, Executive, Compact, Minimal, Colorful, ATS-Friendly, Academic, Corporate, Classic  
-✅ **Real-time Preview** - See your resume rendered instantly in any template  
-✅ **Export Options** - Save as HTML, JSON, or print-ready PDF  
-✅ **Print-Friendly** - Clean, borderless output optimized for professional documents  
-✅ **Offline-First** - All processing happens locally in your browser  
-✅ **No External Network Dependencies at Runtime** - PDF.js is bundled locally, zero backend required
+> 🚀 **[Live demo](https://satvikpraveen.github.io/Resume-Template-Generator/)** — nothing you upload leaves your device.
 
 ---
 
-## 🎨 Template Showcase
+## Why this exists
 
-**All 12 templates are fully functional and optimized with:**
+Most résumé parsers throw away the one thing a PDF reliably preserves: layout.
+Bold headings, flush-right dates, indented bullets and a sidebar column are
+signals a human uses instantly, yet a text-only parser sees a flat stream of
+lines and guesses with regular expressions. This project keeps those signals.
 
-- ✅ Project section support (displays project name, summary, and technologies)
-- ✅ Professional styling and layouts
-- ✅ Print-ready formatting
-- ✅ Responsive design considerations
+The extraction stage reconstructs lines with typography (bold/italic from the
+embedded fonts, font size), tab stops, indentation and column structure from
+the raw pdf.js text runs. Section headings are scored from a lexicon *and*
+their typography. Entries are segmented using soft-wrap detection that works
+even when bullets are drawn as vector shapes and never appear in the text
+layer. The result is validated against the JSON Resume schema and shipped
+with per-section confidence and diagnostics.
 
-### 1. **Tech** - Terminal/CLI Aesthetic
+Every heuristic is covered by an evaluation harness with fictional fixtures
+in nine layout styles; CI fails when a score regresses.
 
-Neon green terminal emulator with bash-style commands. Perfect for developers and engineers.
+## Features
 
-### 2. **Dark** - Cyberpunk Style
+- **PDF → JSON Resume v1.0.0** with ISO 8601 dates, profiles, highlights, GPA, coursework, certificates, awards, publications, languages and interests
+- **Layout-aware extraction**: font weight/style, tab stops (`Title <tab> Jun 2020 – Present`), small-caps headings, two-column pages, bullet-less indented lists
+- **Section segmentation** from ~200 heading phrases plus emphasis, size, caps, spacing and shape features; inline headings (`Skills: Go, SQL`) supported
+- **Parser diagnostics**: confidence per section, detected headings with their canonical ids, human-readable warnings
+- **Plain-text input** as an alternative to PDF (paste a résumé)
+- **12 templates**: Classic, Modern, Creative, Tech, Executive, Compact, Minimal, Colorful, Dark, ATS-Friendly, Academic, Corporate; all HTML-escaped, all print-ready
+- **Export** as standalone HTML, JSON Resume, or print/PDF
+- **Reproducible evaluation**: `npm run eval` scores every fixture; `npm run eval:check` guards the baseline in CI
+- **Zero runtime dependencies** beyond a vendored pdf.js; no build step, no backend, no tracking
 
-Neon accents with Unicode box drawing and glitch effects. Modern and eye-catching.
-
-### 3. **Modern** - Sidebar Portfolio
-
-2-column layout with gradient sidebar and skill badges. Clean and professional.
-
-### 4. **Creative** - Card-Based Portfolio
-
-Hero section with stats cards and masonry project grid. Design-focused.
-
-### 5. **Executive** - Formal Corporate
-
-Serif typography with decorative lines. Enterprise-ready prestige.
-
-### 6. **Compact** - Swiss Grid Design
-
-Minimalist 2-column layout with crisp typography. Maximum clarity.
-
-### 7. **Minimal** - Zen Aesthetic
-
-Generous whitespace and calm color palette. Distraction-free.
-
-### 8. **Colorful** - Vibrant Carnival
-
-Rainbow accents and dynamic badges. Bold and memorable.
-
-### 9. **ATS-Friendly** - Semantic HTML
-
-Plain, machine-readable format optimized for resume parsing systems.
-
-### 10. **Academic** - University CV Format
-
-Research publication style with centered layout. Scholarly presentations.
-
-### 11. **Corporate** - Fortune 500 Biography
-
-Enterprise biography style. C-suite ready.
-
-### 12. **Classic** - LinkedIn Standard
-
-Professional standard layout. Always reliable.
-
----
-
-## 🚀 Quick Start
-
-### Prerequisites
-
-- Modern web browser (Chrome, Firefox, Safari, Edge)
-- Python 3.7+ (for local server)
-
-### Installation & Local Development
-
-1. **Clone the repository**
+## Quick start
 
 ```bash
-git clone https://github.com/SatvikPraveen/resume-template-generator.git
-cd resume-template-generator
+git clone https://github.com/SatvikPraveen/Resume-Template-Generator.git
+cd Resume-Template-Generator
+npm run serve            # python3 -m http.server 8000
+# open http://localhost:8000
 ```
 
-2. **Start local server**
+Upload a text-based PDF (or paste text), click **Parse Resume**, inspect the
+JSON and diagnostics, pick a template, export.
+
+For development:
 
 ```bash
-python -m http.server 8000
+npm install              # dev dependencies only: pdfjs-dist (Node) and pdfkit (fixtures)
+npm test                 # unit tests
+npm run eval             # evaluation report + eval/results.json
+npm run eval:check       # regression check against eval/baseline.json
 ```
 
-3. **Open in browser**
+## Evaluation
+
+The corpus in `eval/fixtures/` holds nine fictional résumés: six plain-text
+layouts (chronological, academic CV, European `MM/YYYY`, career changer,
+student, inline headings) and three PDFs generated with pdfkit (bold headings
+with vector bullets, caps headings without bullets, two-column sidebar). The
+scorer aligns predicted and expected entries, then measures field accuracy
+and highlight/keyword F1. Current baseline (`eval/baseline.json`):
+
+| fixture            | path | overall |
+| ------------------ | ---- | ------: |
+| chronological-tech | text |    1.00 |
+| academic-cv        | text |    1.00 |
+| europe-mm-yyyy     | text |    1.00 |
+| career-changer     | text |    1.00 |
+| student-minimal    | text |    1.00 |
+| inline-headings    | text |    1.00 |
+| pdf-classic-bold   | pdf  |    1.00 |
+| pdf-caps-nobullet  | pdf  |    1.00 |
+| pdf-two-column     | pdf  |    1.00 |
+
+A perfect score on a small hand-written corpus means the rules cover these
+formats, not that they generalise; the harness is a regression net. Every
+real-world failure should become a new fixture. Metrics, fixture design and
+how to read a regression are documented in [docs/EVALUATION.md](docs/EVALUATION.md).
+
+## Architecture
 
 ```
-http://localhost:8000
+PDF ─▶ extract/layout.js ─▶ segment/sections.js ─▶ parse/*.js ─▶ schema/json-resume.js ─▶ render/model.js ─▶ templates.js
+        runs → lines with      lines → labelled       sections →      JSON Resume +          escaped view     12 designs
+        typography, tabs,      sections (lexicon +    entries →       validation +           model, dates
+        columns, soft wraps    typography scoring)    fields          diagnostics            formatted
 ```
 
-4. **Upload your resume**
+Each stage is a pure ES module with no DOM access, so the same code runs in
+the browser and in Node:
 
-- Click "Upload PDF Resume"
-- Select your PDF file
-- Click "Parse Resume"
+```js
+import * as pdfjs from "pdfjs-dist/legacy/build/pdf.mjs";
+import { extractDocument } from "./src/extract/pdf.js";
+import { parseLines, parseText } from "./src/pipeline.js";
 
-5. **Explore templates**
-
-- Click any template card to preview
-- See your data instantly rendered
-- Export as HTML, JSON, or PDF
-
----
-
-## 📦 Hosting on GitHub Pages
-
-### Step 1: Prepare Repository
-
-```bash
-# Create or navigate to your repository
-git clone https://github.com/SatvikPraveen/resume-template-generator.git
-cd resume-template-generator
-
-# Ensure you're on main branch
-git checkout main
+const doc = await extractDocument(pdfjs, new Uint8Array(await fs.readFile("resume.pdf")));
+const resume = parseLines(doc.lines, doc.stats);   // layout-aware
+const other = parseText(plainText);                  // text-only
 ```
 
-### Step 2: Configure GitHub Pages
+The design rationale, feature definitions, scoring tables and known
+limitations are in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
-1. Go to **Repository Settings** → **Pages**
-2. Under "Build and deployment":
-   - Source: Select `Deploy from a branch`
-   - Branch: Select `main` and `/root`
-3. Click **Save**
+## Output
 
-### Step 3: Verify Deployment
-
-After a few minutes, your site will be available at:
-
-```
-https://SatvikPraveen.github.io/resume-template-generator
-```
-
-### Step 4: Update Configuration (Optional)
-
-Add to `index.html` `<head>`:
-
-```html
-<base href="/resume-template-generator/" />
-```
-
-This ensures assets load correctly from the subdirectory.
-
-### Step 5: Custom Domain (Optional)
-
-To use a custom domain:
-
-1. Settings → Pages → Custom domain
-2. Enter your domain (e.g., `resume.yoursite.com`)
-3. Update DNS CNAME record to point to `yourusername.github.io`
-
----
-
-## 🔧 Project Structure
-
-```
-resume-template-generator/
-├── index.html              # Main UI
-├── app.js                  # Application logic & PDF parsing
-├── styles.css              # Global styling
-├── templates.js            # 12 template definitions
-├── vendor/                 # PDF.js library
-│   ├── pdf.mjs
-│   └── pdf.worker.mjs
-├── src/
-│   ├── parsers/
-│   │   └── pdfjs-parser.js # PDF text extraction
-│   └── core/               # Advanced features (optional)
-└── README.md              # This file
-```
-
----
-
-## 📖 How It Works
-
-### Phase 1: PDF Parsing
-
-- Upload your PDF resume
-- PDF.js extracts raw text
-- Advanced regex patterns identify sections:
-  - **Contact Info** - Name, email, phone, location, URLs
-  - **Work Experience** - Position, company, duration, description
-  - **Education** - Degree, institution, dates, location
-  - **Skills** - Categorized by type (languages, tools, frameworks)
-  - **Projects** - Name, description, technologies used
-
-### Phase 2: Data Normalization
-
-- Clean malformed text and spacing
-- Standardize date formats
-- Extract structured JSON
-
-### Phase 3: Template Rendering
-
-- Select desired template
-- Data flows into template's render function
-- HTML + CSS combined and injected into DOM
-- Real-time preview displayed with proper styling
-- All templates support project sections with technologies
-
-### Phase 4: Export
-
-- **HTML** - Standalone file with embedded CSS and full formatting
-- **JSON** - Structured data following JSON Resume standard
-- **PDF** - Print-optimized version with clean layout and no borders
-
----
-
-## 🎯 Use Cases
-
-- 🧑‍💻 **Tech Professionals** - Showcase projects with the Tech template
-- 👔 **Corporate Executives** - Professional prestige with Executive template
-- 🎨 **Designers** - Portfolio showcase with Creative template
-- 🏢 **Corporate HR** - ATS-friendly scanning with ATS template
-- 📚 **Academics** - Research CV with Academic template
-- 🌈 **Creative Roles** - Bold impact with Colorful template
-
----
-
-## 🔐 Privacy & Security
-
-✅ **Zero Data Collection** - No data is sent to any server  
-✅ **Offline-Capable** - Works without internet connection  
-✅ **Client-Side Processing** - All computation in your browser  
-✅ **No Tracking** - No analytics, cookies, or tracking pixels  
-✅ **GDPR Compliant** - Your resume never leaves your device
-
----
-
-## 🛠️ Technical Stack
-
-- **Frontend Framework**: Vanilla JavaScript (no frameworks)
-- **PDF Processing**: PDF.js 4.0+
-- **Styling**: Pure CSS3 with CSS Grid/Flexbox
-- **Data Format**: JSON Resume Standard
-- **Deployment**: Static HTML/CSS/JS (GitHub Pages ready)
-
----
-
-## 📝 Resume Data Format
-
-Extracted data follows this structure:
-
-```javascript
+```jsonc
 {
-  basics: {
-    name: "Your Name",
-    label: "Job Title",
-    email: "email@example.com",
-    phone: "+1-555-0000",
-    url: "https://yoursite.com",
-    location: "City, State"
+  "$schema": "https://raw.githubusercontent.com/jsonresume/resume-schema/v1.0.0/schema.json",
+  "basics": {
+    "name": "Maya Chen",
+    "label": "Senior Software Engineer",
+    "email": "maya.chen@example.com",
+    "location": { "city": "San Francisco", "region": "CA" },
+    "profiles": [{ "network": "GitHub", "username": "mayachen", "url": "https://github.com/mayachen" }],
+    "summary": "Backend engineer with 7 years of experience …"
   },
-  work: [
+  "work": [
     {
-      position: "Job Title",
-      company: "Company Name",
-      startDate: "Jan 2020",
-      endDate: "Present",
-      summary: "Job description..."
+      "name": "Northwind Cloud",
+      "position": "Senior Software Engineer",
+      "location": "San Francisco, CA",
+      "startDate": "2021-03",
+      "highlights": ["Designed a multi-region event pipeline …", "Cut p99 latency …"]
     }
   ],
-  education: [
-    {
-      institution: "University",
-      studyType: "Bachelor's",
-      area: "Field of Study",
-      startDate: "2016",
-      endDate: "2020"
-    }
-  ],
-  skills: [
-    {
-      name: "Category",
-      keywords: ["skill1", "skill2"]
-    }
-  ],
-  projects: [
-    {
-      name: "Project Name",
-      summary: "Description",
-      keywords: ["tech1", "tech2"]
-    }
-  ]
+  "education": [{ "institution": "University of Washington", "studyType": "Bachelor's", "area": "Computer Science", "score": "3.8/4.0", "startDate": "2012-09", "endDate": "2016-06" }],
+  "skills": [{ "name": "Languages", "keywords": ["Go", "Python", "TypeScript", "SQL"] }],
+  "meta": {
+    "parser": "4.0.0",
+    "sections": [{ "id": "experience", "title": "EXPERIENCE", "lines": 12 }],
+    "confidence": { "basics": 0.9, "work": 1, "education": 1, "skills": 1, "projects": 1 },
+    "warnings": []
+  }
 }
 ```
 
----
+## Repository layout
 
-## 🎓 Learning Resources
+```
+index.html, app.js, styles.css   UI (ES module entry point)
+templates.js                     12 render templates
+src/
+  extract/   layout.js (runs → annotated lines), pdf.js (pdf.js wrapper)
+  segment/   sections.js (heading scoring, lexicon)
+  parse/     dates, contact, entries, experience, education, skills, projects, certifications, text utils
+  schema/    json-resume.js (assembly + validator)
+  render/    model.js (template view model, escaping, date formatting)
+  pipeline.js
+eval/        run.js (scorer), fixtures/, baseline.json, make-pdf-fixtures.js
+test/        node:test unit tests
+docs/        ARCHITECTURE.md, EVALUATION.md, archive/ (historical notes)
+vendor/      pdf.js (pdf.mjs, pdf.worker.mjs)
+```
 
-### For Users
+`src/parsers/`, `src/core/`, `app-versions/`, `debug-files/` and `tests/`
+are the previous generation of the parser and its ad-hoc scripts. They are no
+longer loaded by the app and are kept only until the cleanup is agreed; do
+not build on them.
 
-- [JSON Resume Standard](https://jsonresume.org/)
-- [Resume Best Practices](https://www.indeed.com/career-advice/resumes)
+## Limitations
 
-### For Developers
+- Scanned PDFs have no text layer; the app says so instead of guessing (OCR is out of scope).
+- Three or more columns and tabular layouts may interleave.
+- Organisation vs. position depends on lexicons and layout conventions; unusual orderings without any role keyword can swap them.
+- Headings are English only.
 
-- [PDF.js Documentation](https://mozilla.github.io/pdf.js/)
-- [GitHub Pages Guide](https://pages.github.com/)
-- [CSS Grid Reference](https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Grid_Layout)
+## Privacy
 
----
+All processing happens in the browser. There is no server, no analytics and
+no network access at runtime besides loading the page itself. Please do not
+commit real résumés to this repository; the evaluation fixtures are fictional
+by design.
 
-## 🤝 Contributing
+## Contributing
 
-Contributions are welcome! Areas for enhancement:
+See [CONTRIBUTING.md](CONTRIBUTING.md). The most valuable contribution is a
+new fixture for a layout the parser gets wrong: add `input.txt` or
+`input.pdf` plus `expected.json` under `eval/fixtures/<name>/`, run
+`npm run eval -- --verbose --only <name>`, fix, and update the baseline.
 
-- [ ] Additional template designs (Modern variations)
-- [ ] Advanced extraction patterns (Custom sections)
-- [ ] Multi-language support
-- [ ] Resume improvement suggestions
-- [ ] Performance optimizations
-- [ ] Certifications section for the remaining templates (currently in Classic, Modern, Executive, ATS-Friendly, Academic, and Corporate; still missing from Creative, Tech, Compact, Minimal, Colorful, and Dark)
-- [ ] Broader accessibility coverage (ARIA labels/roles on tabs and template-selection cards, live-region announcements beyond the upload error banner)
+## License
 
-### How to Contribute
+MIT — see [LICENSE](LICENSE).
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/new-template`)
-3. Commit changes (`git commit -am 'Add new template'`)
-4. Push to branch (`git push origin feature/new-template`)
-5. Open a Pull Request
+## Acknowledgments
 
----
-
-## 📄 License
-
-This project is licensed under the **MIT License** - see the LICENSE file for details.
-
----
-
-## 🐛 Troubleshooting
-
-### PDF Won't Parse
-
-- Ensure PDF is text-based (not scanned image)
-- Try reducing file size
-- Check browser console for errors (F12)
-
-### Template Not Displaying
-
-- Clear browser cache (Ctrl+Shift+Delete)
-- Hard refresh page (Ctrl+Shift+R)
-- Check JavaScript console for errors
-
-### Export Not Working
-
-- Ensure you've parsed a resume first
-- Try different export format
-- Check browser permissions for downloads
-
----
-
-## 📞 Support
-
-- **Issues**: Open an issue on GitHub
-- **Discussions**: GitHub Discussions for feature requests
-- **Documentation**: See inline comments in `app.js` and `templates.js`
-
----
-
-## 🎉 Acknowledgments
-
-- Built with [PDF.js](https://mozilla.github.io/pdf.js/) by Mozilla
-- Inspired by [JSON Resume](https://jsonresume.org/)
-- Template designs inspired by real-world resume formats
-- Hosted on [GitHub Pages](https://pages.github.com/)
-
----
-
-## ✅ What's New
-
-### Implemented from the v1.1 Roadmap
-
-- [x] Drag-and-drop file upload
-
----
-
-## 🔮 Roadmap
-
-### v1.1 (Planned)
-
-- [ ] Additional templates (Gradient, Minimalist, Startup)
-- [ ] Custom color themes
-- [ ] Section reordering
-- [ ] Field editing before export
-
-### v2.0 (Future)
-
-- [ ] Multi-resume management
-- [ ] Template builder UI
-- [ ] Cloud sync (optional)
-- [ ] Browser extensions
-- [ ] Mobile app
-
----
-
-**Made with ❤️ for job seekers everywhere**
-
-Last Updated: September 6, 2026
+Built with [PDF.js](https://mozilla.github.io/pdf.js/) by Mozilla. Output
+follows the [JSON Resume](https://jsonresume.org/) schema.
