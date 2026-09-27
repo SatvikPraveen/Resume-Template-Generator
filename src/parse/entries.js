@@ -30,6 +30,7 @@ export function toParagraphs(lines) {
         text: line.text,
         bullet: line.bullet,
         emph: !!line.emph,
+        bold: !!line.bold,
         gapAbove: line.gapAbove ?? 1,
         indent: line.indent ?? 0,
         textOnly: !!line.textOnly,
@@ -71,7 +72,7 @@ export function segmentEntries(lines, { maxHeaderLines = 3 } = {}) {
 
     const startNew =
       headerLike &&
-      (!cur || cur.body.length > 0 || cur.header.length >= maxHeaderLines || prevWasBody || (p.gapAbove > 1.4 && cur.header.length > 0 && (p.emph || containsDate(p.text))) || (p.emph && cur.header.some((h) => h.emph) && !cur.header[cur.header.length - 1].emph && cur.header.length >= 2) || startsFreshBlock(p, cur));
+      (!cur || cur.body.length > 0 || cur.header.length >= maxHeaderLines || prevWasBody || (p.gapAbove > 1.6 && cur.header.length > 0 && (p.emph || containsDate(p.text))) || (p.emph && cur.header.some((h) => h.emph) && !cur.header[cur.header.length - 1].emph && cur.header.length >= 2) || startsFreshBlock(p, cur));
 
     if (startNew) {
       cur = { header: [p], body: [] };
@@ -100,11 +101,12 @@ export function segmentEntries(lines, { maxHeaderLines = 3 } = {}) {
 /** Two emphasised header paragraphs each with their own date range are two entries. */
 function startsFreshBlock(p, cur) {
   if (!cur || cur.header.length === 0) return false;
-  const curHasRange = cur.header.some((h) => findDateRanges(h.text).length > 0);
-  const pHasRange = findDateRanges(p.text).length > 0;
-  if (curHasRange && pHasRange) return true;
-  const curEmph = cur.header[0].emph;
-  return curEmph && p.emph && cur.header.length >= 1 && p.gapAbove > 1.2;
+  const curHasDate = cur.header.some((h) => containsDate(h.text));
+  const pHasDate = containsDate(p.text);
+  if (curHasDate && pHasDate) return true;
+  // Two bold header paragraphs separated by a gap ("Company A" / "Company B")
+  // are separate entries; a bold title followed by an italic organisation is not.
+  return cur.header[0].bold && p.bold && p.gapAbove > 1.2;
 }
 
 /** Body paragraphs -> highlights (bullets) and a prose summary. */
@@ -114,7 +116,9 @@ export function bodyToHighlights(body) {
   for (const p of body) {
     const text = stripBullet(p.text).trim();
     if (!text) continue;
-    if (p.bullet || highlights.length > 0 || (!p.textOnly && p.indent > 4)) {
+    // Bullets, indented blocks and (in text-only input) short stand-alone
+    // lines are highlights; long unindented prose is the entry summary.
+    if (p.bullet || highlights.length > 0 || (!p.textOnly && p.indent > 4) || (p.textOnly && wordCount(text) <= 30)) {
       highlights.push(text);
     } else {
       prose.push(text);

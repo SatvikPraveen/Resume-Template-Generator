@@ -6,7 +6,7 @@
  * module has no environment-specific imports.
  */
 
-import { buildLines, orderColumns, computeStats, annotateLines, linesToText } from "./layout.js";
+import { buildLines, computeStats, annotateLines, linesToText } from "./layout.js";
 
 /**
  * Resolve embedded font names for a page. Text extraction alone does not load
@@ -60,8 +60,7 @@ export async function extractDocument(pdfjsLib, data, options = {}) {
     const content = await page.getTextContent();
     const items = content.items.filter((it) => typeof it.str === "string");
     const fonts = wantFonts ? await resolveFonts(page, items) : {};
-    let lines = buildLines(items, { page: p, pageWidth: viewport.width, pageHeight: viewport.height, fonts });
-    lines = orderColumns(lines, viewport.width);
+    const lines = buildLines(items, { page: p, pageWidth: viewport.width, pageHeight: viewport.height, fonts });
     pages.push({ number: p, width: viewport.width, height: viewport.height, lineCount: lines.length });
     allLines.push(...lines);
   }

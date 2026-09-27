@@ -120,6 +120,11 @@ const KEYWORD_SUFFIX = [
   [/\bcoursework$/i, "coursework"],
 ];
 
+const GENERIC_INLINE = new Set(["technologies", "tools", "tech stack", "technology stack", "stack", "technical", "tools and technologies", "technologies and tools", "expertise", "strengths"]);
+
+const PROGRAMMING_LANGS =
+  /\b(?:python|java|javascript|typescript|c\+\+|c#|\bc\b|go|golang|rust|ruby|php|swift|kotlin|scala|perl|sql|r|matlab|julia|haskell|lua|dart|objective-c|bash|shell|html|css|sas|cobol|fortran|assembly|solidity|elixir|erlang|clojure|f#|groovy|vba)\b/i;
+
 /** Strip decorations that often surround headings ("--- SKILLS ---", "SKILLS:", "» Education"). */
 export function cleanHeadingText(text) {
   return (text || "")
@@ -173,14 +178,22 @@ export function scoreHeading(line, stats = {}) {
   if (typeof line.indent === "number" && line.indent <= 2 && !line.textOnly) score += 0.4;
   if (line.bullet) score -= 3;
   if (words > 6) score -= 2;
-  if (containsDate(text)) score -= 3;
-  if (/[@]|https?:|www\./i.test(text)) score -= 3;
-  if (endsSentence(text) && !text.trim().endsWith(":")) score -= 1;
+  // Dates, emails and URLs disqualify a heading – but only in the heading
+  // part itself when the line is "Known Heading: content".
+  const penaltyTarget = lookup && inlineContent ? heading : text;
+  if (containsDate(penaltyTarget)) score -= 3;
+  if (/[@]|https?:|www\./i.test(penaltyTarget)) score -= 3;
+  if (endsSentence(penaltyTarget) && !penaltyTarget.trim().endsWith(":")) score -= 1;
+  // "Technologies: React, Firebase" under a project is a tech list, not a section.
+  if (inlineContent && lookup && GENERIC_INLINE.has(canonical(cleanHeadingText(heading)))) score -= 4;
   if (!lookup && !line.textOnly && !(line.emph || line.larger)) score -= 1.5;
   if (inlineContent && !lookup) score -= 2;
   // "Programming Languages: C, Java, Python" is a skill category, not a heading.
   if (inlineContent && lookup && !lookup.exact) score -= 3;
-  if (inlineContent && (inlineContent.match(/,/g) || []).length >= 2 && !(line.emph || line.larger)) score -= 1.5;
+  // "Languages: Python, Java" is a skill category even though "languages" is a heading phrase.
+  if (inlineContent && lookup && lookup.id === "languages" && PROGRAMMING_LANGS.test(inlineContent)) score -= 4;
+  // An exact heading phrase followed by ":" and content is an inline section ("Skills: Go, SQL").
+  if (inlineContent && lookup && lookup.exact && words <= 3) score += 1.2;
   if (!lookup && !isAllCaps(heading) && !isTitleCase(heading)) score -= 1;
   if (line.textOnly && lookup && !inlineContent && (isAllCaps(heading) || text.trim().endsWith(":") || words <= 2)) score += 0.8;
 

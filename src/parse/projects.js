@@ -6,7 +6,7 @@
  * followed by bullet highlights and sometimes a "Technologies:" line.
  */
 
-import { findDateRanges, stripDates, toISO } from "./dates.js";
+import { findDateRanges, findDates, stripDates, toISO } from "./dates.js";
 import { segmentEntries, bodyToHighlights } from "./entries.js";
 import { splitSkillList } from "./skills.js";
 import { normalizeWhitespace, stripBullet, wordCount } from "./text.js";
@@ -22,6 +22,9 @@ function parseHeader(headerParas) {
   if (ranges.length) {
     startDate = toISO(ranges[0].start);
     endDate = ranges[0].end.present ? "" : toISO(ranges[0].end);
+  } else {
+    const singles = findDates(joined);
+    if (singles.length) startDate = toISO(singles[0].date);
   }
   const urls = extractUrls(joined);
   let text = normalizeWhitespace(stripDates(stripBullet(joined)).replace(/\(\s*\)/g, ""));
@@ -64,7 +67,16 @@ export function parseProjects(lines) {
       }
       continue;
     }
-    const header = parseHeader(e.header);
+    // A "Technologies: ..." line may have been absorbed into the header block.
+    const techFromHeader = [];
+    const headerParas = e.header.filter((p) => {
+      const m = stripBullet(p.text).match(TECH_LABEL_RE);
+      if (m) techFromHeader.push(...splitSkillList(stripBullet(p.text).slice(m[0].length)));
+      return !m;
+    });
+    if (headerParas.length === 0) continue;
+    const header = parseHeader(headerParas);
+    header.keywords.push(...techFromHeader);
     const bodyParas = [];
     for (const p of e.body) {
       const text = stripBullet(p.text);

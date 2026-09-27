@@ -6,7 +6,7 @@
 import { findDateRanges, findDates, stripDates, toISO } from "./dates.js";
 import { extractLocation } from "./contact.js";
 import { segmentEntries, bodyToHighlights } from "./entries.js";
-import { normalizeWhitespace, wordCount } from "./text.js";
+import { normalizeWhitespace, wordCount, splitOutsideParens } from "./text.js";
 
 const INSTITUTION_RE =
   /\b(university|universit[aé]t|universidad|universit[eé]|college|institute|institution|school|academy|polytechnic|iit|nit|iiit|bits|mit|conservatory|seminary|hochschule|ecole|école|lyc[eé]e|gymnasium|faculty)\b/i;
@@ -24,7 +24,20 @@ const DEGREE_PATTERNS = [
   { re: /\b(?:high\s+school|secondary\s+school|hsc|ssc|a[\s-]levels?|gcse|baccalaur[eé]at|abitur|matriculation|intermediate|12th|10th)\b/i, type: "High School" },
 ];
 
-const FIELD_RE = /\b(?:in|of|on)\s+([A-Z][A-Za-z&/,()' -]+?)(?=\s*(?:[|•·\t]|\(|,\s*(?:GPA|CGPA|Grade|Minor)|\bGPA\b|\bCGPA\b|\bminor\b|\bconcentration\b|\bwith\b|$))/i;
+const FIELD_RE = /\b(?:in|of|on)\s+([A-Z][A-Za-z&/,()' -]+?)(?=\s*(?:[|•·\t]|\(|,\s*(?:GPA|CGPA|Grade|Minor|First|Second|Upper|Lower|With|Hons|Honou?rs|Distinction|Cum|Magna|Summa|Expected|Graduat)|\bGPA\b|\bCGPA\b|\bminor\b|\bconcentration\b|\bwith\b|$))/i;
+const COURSE_RE = /^(?:relevant\s+|selected\s+|key\s+)?(?:coursework|course\s*work|courses)\s*[:\-–—]\s*/i;
+const HONOURS_RE = /,?\s*(?:\(?(?:first|second|upper|lower|1st|2nd)[\s-]*(?:class)?\s*(?:honou?rs)?\)?|with\s+(?:distinction|honou?rs|merit)|honou?rs|cum laude|magna cum laude|summa cum laude|distinction)\s*$/i;
+
+/** Strip grade qualifiers and separators from a field of study. */
+function cleanupArea(area) {
+  return normalizeWhitespace(area || "")
+    .replace(GPA_RE, "")
+    .replace(HONOURS_RE, "")
+    .replace(/[\s,|•·\-–—(:]+$/g, "")
+    .replace(/^[\s,|•·\-–—):]+/g, "")
+    .trim();
+}
+
 const GPA_RE = /\b(?:c?gpa|grade|cgpa|percentage|score)\s*[:=]?\s*([0-9]+(?:\.[0-9]+)?(?:\s*\/\s*[0-9]+(?:\.[0-9]+)?)?%?)|\b([0-9]\.[0-9]{1,2})\s*\/\s*(4(?:\.0+)?|10(?:\.0+)?)\b|\bfirst[\s-]class\b|\bdistinction\b|\bsumma cum laude\b|\bmagna cum laude\b|\bcum laude\b/i;
 
 function escapeRe(s) {
@@ -85,48 +98,78 @@ function parseEntry(entry) {
   const locRe = loc ? new RegExp(`${escapeRe(loc.city)},\\s*${escapeRe(loc.region)}(?:\\s+\\d{5})?`) : null;
   const stripLoc = (s) => (locRe ? s.replace(locRe, " ") : s);
 
-  const lines = [...entry.header, ...entry.body].map((p) =>
+  const cleanup = (str) =>
+    normalizeWhitespace(stripLoc(str || "").replace(/\t/g, " "))
+      .replace(GPA_RE, "")
+      .replace(/[\s,|•·\-–—(:]+$/g, "")
+      .replace(/^[\s,|•·\-–—):]+/g, "")
+      .trim();
+
+  const rawLines = [...entry.header, ...entry.body].map((p) =>
     normalizeWhitespace(stripLoc(stripDates(p.text)).replace(/\t/g, " ")).replace(/[\s,|•·\-–—]+$/g, ""),
   );
+  const courses = [];
+  const lines = [];
+  for (const line of rawLines) {
+    const cm = line.match(COURSE_RE);
+    if (cm) {
+      courses.push(...splitOutsideParens(line.slice(cm[0].length), ",;•|").map((c) => c.replace(/\.$/, "")));
+      continue;
+    }
+    lines.push(line);
+  }
+
   let institution = "";
-  let degreeLine = "";
+  let degreeText = "";
   let degree = null;
   for (const line of lines) {
     const d = findDegree(line);
-    if (!institution && INSTITUTION_RE.test(line) && !(d && d.index < (line.search(INSTITUTION_RE)))) {
+    const hasInst = INSTITUTION_RE.test(line);
+    if (d && hasInst) {
+      // "B.S. in Nursing, Texas State University" / "MBA, Kellogg School, Northwestern University"
+      const segs = splitOutsideParens(line, ",|");
+      const instSegs = segs.filter((seg) => INSTITUTION_RE.test(seg) && !findDegree(seg));
+      if (instSegs.length) {
+        if (!institution) institution = instSegs.join(", ");
+        if (!degree) {
+          degreeText = segs.filter((seg) => !instSegs.includes(seg)).join(", ");
+          degree = findDegree(degreeText);
+        }
+        continue;
+      }
+      // Both in one segment ("Stanford University M.S. Computer Science"): split at the degree.
+      if (d.index > 0) {
+        if (!institution) institution = line.slice(0, d.index);
+        if (!degree) {
+          degreeText = line.slice(d.index);
+          degree = findDegree(degreeText);
+        }
+      } else if (!degree) {
+        degree = d;
+        degreeText = line;
+      }
+      continue;
+    }
+    if (hasInst && !institution) {
       institution = line;
-      if (d) degreeLine = line;
       continue;
     }
     if (d && !degree) {
       degree = d;
-      degreeLine = line;
+      degreeText = line;
     }
   }
-  if (!degree && degreeLine) degree = findDegree(degreeLine);
   if (!institution && entry.header.length) {
-    // No institution keyword: take the emphasised header line, else the first.
-    const emph = entry.header.find((p) => p.emph && p.text !== degreeLine);
-    institution = stripDates((emph || entry.header.find((p) => p.text !== degreeLine) || entry.header[0]).text);
+    // No institution keyword: take the emphasised header line, else the first non-degree line.
+    const emph = entry.header.find((p) => p.emph && !findDegree(p.text));
+    const src = emph || entry.header.find((p) => !findDegree(p.text));
+    if (src) institution = stripDates(src.text);
   }
-
-  const cleanup = (s) =>
-    normalizeWhitespace(stripLoc(s).replace(/\t/g, " "))
-      .replace(GPA_RE, "")
-      .replace(/[\s,|•·\-–—(]+$/g, "")
-      .replace(/^[\s,|•·\-–—)]+/g, "")
-      .trim();
-
   institution = cleanup(institution);
-  // "Institution, Degree" on one line: split at the degree.
-  if (degree && degreeLine === institution && degree.index > 0) {
-    institution = cleanup(institution.slice(0, degree.index));
-  } else if (degree && degreeLine && institution.includes(degreeLine) && degree.index === 0) {
-    institution = cleanup(institution.replace(degreeLine, ""));
-  }
-  const area = degree ? findField(degreeLine, degree) : findField(headerText, null);
+
+  let area = degree ? findField(degreeText, degree) : "";
+  area = cleanupArea(area);
   const score = findScore(all);
-  const { highlights } = bodyToHighlights(entry.body.filter((p) => !findDegree(p.text)));
 
   if (!institution && !degree) return null;
   return {
@@ -138,7 +181,7 @@ function parseEntry(entry) {
     current,
     score,
     location,
-    courses: highlights,
+    courses,
   };
 }
 

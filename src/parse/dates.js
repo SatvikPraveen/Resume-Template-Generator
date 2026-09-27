@@ -32,8 +32,8 @@ const YEAR2 = "\\d{2}";
 
 // Sub-patterns. Each alternative is wrapped so we can tell which one matched.
 const DATE_ALTS = [
-  // Month YYYY  |  Month, YYYY  |  Month YY
-  `(?:${MONTH_NAME}|${SEASON_NAME})\\s*,?\\s*(?:${YEAR4}|${YEAR2}(?![\\d]))`,
+  // Month YYYY  |  Month, YYYY  |  Month YY  |  Month 'YY
+  `(?:${MONTH_NAME}|${SEASON_NAME})\\s*,?\\s*(?:${YEAR4}|['’]?${YEAR2}(?![\\d]))`,
   // MM/YYYY, MM-YYYY, MM.YYYY
   `(?:0?[1-9]|1[0-2])\\s*[/.-]\\s*${YEAR4}`,
   // YYYY-MM (ISO) and YYYY/MM
@@ -71,7 +71,7 @@ export function expandYear(yearText) {
  */
 export function parseDateToken(text) {
   if (!text) return null;
-  const t = text.trim().toLowerCase().replace(/\.$/, "");
+  const t = text.trim().toLowerCase().replace(/\.$/, "").replace(/['’]/g, "");
   if (PRESENT_RE.test(t)) return { present: true };
 
   let m;
@@ -158,9 +158,11 @@ export function containsDate(text) {
 }
 
 /** Remove all date ranges and stand-alone dates from a string. */
+const DATE_QUALIFIER_RE = /\b(?:expected|anticipated|estimated|est\.?|graduating|graduation|class of|since|from)\b\s*:?\s*(?=(?:19|20)\d{2}|[A-Za-z]{3,9}\.?\s*,?\s*['’]?\d{2,4}|\d{1,2}\s*[/.-]\s*(?:19|20)\d{2})/gi;
+
 export function stripDates(text) {
   if (!text) return "";
-  let out = text.replace(RANGE_RE, " ");
+  let out = text.replace(DATE_QUALIFIER_RE, "").replace(RANGE_RE, " ");
   out = out.replace(SINGLE_RE, " ");
   return out
     .replace(/\(\s*\)/g, " ")

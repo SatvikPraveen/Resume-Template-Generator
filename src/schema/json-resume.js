@@ -107,7 +107,9 @@ export function toJsonResume(parsed, meta = {}) {
       ...meta,
     },
   };
-  return clean(resume);
+  const cleaned = clean(resume);
+  if (!cleaned.basics) cleaned.basics = {};
+  return cleaned;
 }
 
 /**

@@ -12,7 +12,7 @@ import { containsDate } from "./dates.js";
 export const EMAIL_RE = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g;
 // International and North American phone shapes, tolerant of spaces around separators.
 export const PHONE_RE =
-  /(?:\+\s?\d{1,3}[\s.-]?)?(?:\(\s?\d{2,4}\s?\)|\d{2,4})[\s.-]?\d{3,4}[\s.-]?\d{3,4}(?:[\s.-]?\d{1,4})?/g;
+  /(?:\+\s?\d{1,3}[\s.-]?)?(?:\(\s?\d{2,5}\s?\)|\d{2,5})(?:[\s.-]?\d{2,5}){2,4}/g;
 export const URL_RE = /(?:https?:\/\/|www\.)[^\s|,;)]+|(?:linkedin\.com|github\.com|gitlab\.com|behance\.net|dribbble\.com|medium\.com|twitter\.com|x\.com|stackoverflow\.com|kaggle\.com|scholar\.google\.com|orcid\.org)\/[^\s|,;)]+/gi;
 
 const US_STATES = new Set(
@@ -36,6 +36,20 @@ const REGIONS = new Set(
     "sri lanka", "nepal", "russia", "ukraine", "czech republic", "greece", "hungary", "romania", "remote",
     "tamil nadu", "karnataka", "maharashtra", "telangana", "kerala", "gujarat", "delhi", "west bengal",
     "andhra pradesh", "punjab", "haryana", "uttar pradesh", "rajasthan", "madhya pradesh", "bavaria",
+    // Countries (ISO short names, common forms)
+    "afghanistan", "albania", "algeria", "angola", "armenia", "azerbaijan", "bahrain", "belarus", "bolivia",
+    "bosnia", "botswana", "bulgaria", "cambodia", "cameroon", "costa rica", "croatia", "cuba", "cyprus",
+    "czechia", "dominican republic", "ecuador", "el salvador", "estonia", "ethiopia", "georgia", "ghana",
+    "guatemala", "honduras", "iceland", "iran", "iraq", "jamaica", "jordan", "kazakhstan", "kuwait",
+    "kyrgyzstan", "laos", "latvia", "lebanon", "libya", "lithuania", "luxembourg", "macedonia", "madagascar",
+    "malta", "mauritius", "moldova", "mongolia", "montenegro", "morocco", "mozambique", "myanmar", "namibia",
+    "nicaragua", "oman", "panama", "paraguay", "rwanda", "senegal", "serbia", "slovakia", "slovenia",
+    "somalia", "sudan", "syria", "tanzania", "tunisia", "uganda", "uruguay", "uzbekistan", "venezuela",
+    "yemen", "zambia", "zimbabwe", "scotland", "northern ireland", "luxemburg", "holland", "the netherlands",
+    "south sudan", "north macedonia", "ivory coast", "cote d'ivoire", "trinidad", "bahamas", "barbados",
+    "fiji", "papua new guinea", "brunei", "bhutan", "maldives", "mauritania", "mali", "niger", "chad",
+    "gabon", "congo", "liberia", "sierra leone", "togo", "benin", "burkina faso", "eritrea", "djibouti",
+    "malawi", "lesotho", "eswatini", "swaziland", "burundi", "guinea", "gambia", "seychelles", "comoros",
   ].map((s) => s.toLowerCase()),
 );
 
@@ -50,23 +64,37 @@ function isKnownRegion(region) {
   return REGIONS.has(r.toLowerCase());
 }
 
-/** Find a plausible location in the given text (usually the header lines). */
+/**
+ * Find a plausible location in the given text (usually the header lines).
+ *
+ * strict: the region must be a known state/country (or US state code).
+ * loose : additionally accept an unknown region when the whole tab- or
+ *         pipe-delimited segment is exactly "City, Region" (e.g. "Zurich,
+ *         Switzerland" printed on its own, or "Bern" style trailing tokens
+ *         are ignored).
+ */
 export function extractLocation(text, { strict = true } = {}) {
   if (!text) return null;
   const candidates = [];
   for (const line of text.split("\n")) {
-    LOCATION_RE.lastIndex = 0;
-    let m;
-    while ((m = LOCATION_RE.exec(line)) !== null) {
-      const known = isKnownRegion(m[2]);
-      const contactLine = /@|https?:|www\.|\|/.test(line) || /\d{3}[\s.-]\d{3,4}[\s.-]\d{4}/.test(line);
-      if (known || (!strict && (contactLine || wordCount(line) <= 6))) {
-        candidates.push({ city: m[1], region: m[2], postalCode: m[3] || "", known, contactLine });
+    const contactLine = /@|https?:|www\.|\|/.test(line) || /\d{3}[\s.-]\d{3,4}[\s.-]\d{4}/.test(line);
+    for (const segment of line.split(/\t|\s\|\s|\s•\s/)) {
+      LOCATION_RE.lastIndex = 0;
+      let m;
+      while ((m = LOCATION_RE.exec(segment)) !== null) {
+        const known = isKnownRegion(m[2]);
+        const whole = m[0].trim() === segment.trim();
+        const cityOk = wordCount(m[1]) <= 3 && !/\d/.test(m[1]);
+        if (cityOk && (known || (!strict && whole && /^[A-Z]{2}$/.test(m[2])) || (!strict && whole && contactLine))) {
+          candidates.push({ city: m[1], region: m[2], postalCode: m[3] || "", known, contactLine, whole });
+        }
+        // Retry from the next character so "Technology, Cambridge, MA" can still yield "Cambridge, MA".
+        LOCATION_RE.lastIndex = m.index + 1;
       }
     }
   }
   if (!candidates.length) return null;
-  candidates.sort((a, b) => (b.known - a.known) || (b.contactLine - a.contactLine));
+  candidates.sort((a, b) => (b.known - a.known) || (b.whole - a.whole) || (b.contactLine - a.contactLine));
   const best = candidates[0];
   return { city: best.city, region: best.region, postalCode: best.postalCode };
 }
@@ -85,7 +113,8 @@ export function extractPhone(text) {
   while ((m = PHONE_RE.exec(text)) !== null) {
     const raw = m[0];
     const digits = raw.replace(/\D/g, "");
-    if (digits.length < 10 || digits.length > 15) continue;
+    if (digits.length < 9 || digits.length > 15) continue;
+    if (!/^\+/.test(raw.trim()) && digits.length < 10) continue;
     // Reject things that are really date ranges or zip codes ("2016 - 2020 12345").
     if (/(?:19|20)\d{2}\s*[-–]\s*(?:19|20)\d{2}/.test(raw)) continue;
     found.push(raw.trim());
@@ -199,6 +228,7 @@ export function extractBasics(headerLines, allText, stats = {}) {
     if (!cleaned || cleaned === "|") continue;
     const hasContact = /@|https?:|www\./i.test(line.text) || extractPhone(line.text) || /\|/.test(line.text);
     const wc = wordCount(cleaned);
+    if (NAME_STOPWORDS.test(cleaned) && wc <= 3) continue;
     if (!label && !hasContact && wc <= 8 && !endsSentence(cleaned) && !containsDate(cleaned) && !/[,]/.test(cleaned) && i <= nameIdx + 3) {
       // Skip a lone location line.
       if (location && cleaned.includes(location.city) && wc <= 4) continue;

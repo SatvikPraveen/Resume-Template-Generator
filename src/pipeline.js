@@ -21,7 +21,7 @@ import { parseProjects } from "./parse/projects.js";
 import { parseCertifications, parseAwards, parsePublications, parseLanguages } from "./parse/certifications.js";
 import { toJsonResume, validateJsonResume } from "./schema/json-resume.js";
 import { findDateRanges } from "./parse/dates.js";
-import { normalizeWhitespace, stripBullet } from "./parse/text.js";
+import { normalizeWhitespace, stripBullet, splitOutsideParens } from "./parse/text.js";
 
 export const PARSER_VERSION = "4.0.0";
 
@@ -95,6 +95,17 @@ export function parseLines(lines, stats = computeStats(lines), options = {}) {
       .filter(Boolean)
       .map((name) => ({ name })),
   };
+
+  // A stand-alone "Relevant Coursework" section belongs to the most recent degree.
+  const courseLines = linesFor(sections, "coursework");
+  if (courseLines.length && parsed.education.length) {
+    const courses = courseLines
+      .flatMap((l) => splitOutsideParens(stripBullet(l.text).replace(/^(?:relevant\s+)?(?:coursework|courses)\s*[:\-–—]\s*/i, ""), ",;•|"))
+      .map((c) => normalizeWhitespace(c).replace(/\.$/, ""))
+      .filter(Boolean);
+    const target = parsed.education[0];
+    target.courses = [...new Set([...(target.courses || []), ...courses])];
+  }
 
   // Summary section (labelled) wins over an unlabelled header paragraph.
   const summaryLines = linesFor(sections, "summary");

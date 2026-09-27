@@ -36,19 +36,8 @@ export function classifyFontName(name) {
   return { bold: BOLD_RE.test(n), italic: ITALIC_RE.test(n) };
 }
 
-/**
- * Group raw pdf.js text items of one page into lines.
- *
- * @param {Array} items pdf.js TextItem[] ({str, transform, width, height, fontName, hasEOL})
- * @param {object} opts
- * @param {number} opts.page 1-based page number
- * @param {number} opts.pageWidth
- * @param {number} opts.pageHeight
- * @param {Object<string,{name?:string,bold?:boolean,italic?:boolean}>} [opts.fonts]
- * @returns {Array<object>} lines in reading order for this page
- */
-export function buildLines(items, opts) {
-  const { page = 1, pageWidth = 612, pageHeight = 792, fonts = {} } = opts || {};
+/** Convert pdf.js text items into positioned runs with style flags. */
+function toRuns(items, fonts) {
   const runs = [];
   for (const it of items || []) {
     if (!it || typeof it.str !== "string") continue;
@@ -72,13 +61,56 @@ export function buildLines(items, opts) {
       isSpace: it.str.trim() === "",
     });
   }
+  return runs;
+}
+
+/**
+ * Group raw pdf.js text items of one page into lines, in reading order.
+ *
+ * Two-column pages are detected on the raw runs (a sidebar and the main
+ * column share baselines, so this must happen before lines are formed).
+ * Each column is read top-to-bottom; full-width lines (name header, footer)
+ * act as separators between column blocks.
+ *
+ * @param {Array} items pdf.js TextItem[] ({str, transform, width, height, fontName, hasEOL})
+ * @param {object} opts
+ * @param {number} opts.page 1-based page number
+ * @param {number} opts.pageWidth
+ * @param {number} opts.pageHeight
+ * @param {Object<string,{name?:string,bold?:boolean,italic?:boolean}>} [opts.fonts]
+ * @returns {Array<object>} lines in reading order for this page
+ */
+export function buildLines(items, opts) {
+  const { page = 1, pageWidth = 612, pageHeight = 792, fonts = {} } = opts || {};
+  const runs = toRuns(items, fonts);
   if (runs.length === 0) return [];
 
-  // Cluster runs into lines by baseline proximity.
-  runs.sort((a, b) => b.y - a.y || a.x0 - b.x0);
+  const gutter = detectGutter(runs.filter((r) => !r.isSpace), pageWidth);
+  let groups;
+  if (gutter == null) {
+    groups = [{ column: 0, runs }];
+  } else {
+    groups = [
+      { column: 0, runs: runs.filter((r) => r.x0 < gutter - 2 && r.x1 > gutter + 2) },
+      { column: 1, runs: runs.filter((r) => r.x1 <= gutter + 2) },
+      { column: 2, runs: runs.filter((r) => r.x0 >= gutter - 2) },
+    ];
+  }
+  const all = [];
+  for (const g of groups) {
+    for (const ln of linesFromRuns(g.runs)) all.push({ ...ln, column: g.column, page, pageWidth, pageHeight });
+  }
+  // Merge by baseline (top to bottom), full-width lines first on ties.
+  all.sort((a, b) => b.y - a.y || a.column - b.column);
+  return orderColumns(all);
+}
+
+/** Cluster runs into lines by baseline proximity and join their text. */
+function linesFromRuns(runs) {
+  const sorted = [...runs].sort((a, b) => b.y - a.y || a.x0 - b.x0);
   const lines = [];
   let current = null;
-  for (const r of runs) {
+  for (const r of sorted) {
     const tol = Math.max(2, 0.4 * (r.size || 10));
     if (current && Math.abs(current.y - r.y) <= tol) {
       current.runs.push(r);
@@ -103,7 +135,6 @@ export function buildLines(items, opts) {
     for (const r of visible) fontCounts[r.fontName] = (fontCounts[r.fontName] || 0) + r.str.length;
     out.push({
       text,
-      page,
       x0: Math.min(...visible.map((r) => r.x0)),
       x1: Math.max(...visible.map((r) => r.x1)),
       y: ln.y,
@@ -113,8 +144,6 @@ export function buildLines(items, opts) {
       boldRatio: boldChars / totalChars,
       fontCounts,
       runs: mergeRuns(ln.runs, size),
-      pageWidth,
-      pageHeight,
     });
   }
   return out;
@@ -188,35 +217,36 @@ function mergeRuns(runs, lineSize) {
 }
 
 /**
- * Detect a two-column layout on a page by looking for a vertical gutter that
- * few lines cross. Returns the gutter x position or null.
+ * Detect a two-column layout from positioned boxes (runs or lines): a
+ * vertical band that almost nothing crosses, with substantial content on
+ * both sides and a consistently aligned left edge on the right-hand side
+ * (which rules out a flush-right column of dates).
+ * @returns {number|null} the gutter x position
  */
-export function detectGutter(lines, pageWidth) {
-  if (!lines || lines.length < 12) return null;
+export function detectGutter(boxes, pageWidth) {
+  if (!boxes || boxes.length < 12) return null;
   const bins = 64;
   const binW = pageWidth / bins;
   const coverage = new Array(bins).fill(0);
-  for (const ln of lines) {
-    const a = Math.max(0, Math.floor(ln.x0 / binW));
-    const b = Math.min(bins - 1, Math.floor(ln.x1 / binW));
-    for (let i = a; i <= b; i++) coverage[i]++;
+  for (const b of boxes) {
+    const a = Math.max(0, Math.floor(b.x0 / binW));
+    const z = Math.min(bins - 1, Math.floor(b.x1 / binW));
+    for (let i = a; i <= z; i++) coverage[i]++;
   }
-  const n = lines.length;
+  const n = boxes.length;
   let best = null;
-  for (let i = Math.floor(bins * 0.22); i < Math.floor(bins * 0.78); i++) {
-    if (coverage[i] > n * 0.06) continue;
-    // Extend the low-coverage band.
+  for (let i = Math.floor(bins * 0.2); i < Math.floor(bins * 0.8); i++) {
+    if (coverage[i] > n * 0.03) continue;
     let j = i;
-    while (j + 1 < bins && coverage[j + 1] <= n * 0.06) j++;
-    const left = coverage.slice(0, i).reduce((s, v) => s + v, 0);
-    const right = coverage.slice(j + 1).reduce((s, v) => s + v, 0);
-    if (left > n * 0.25 && right > n * 0.25) {
-      const gutterX = ((i + j + 1) / 2) * binW;
-      const leftLines = lines.filter((l) => l.x1 <= gutterX).length;
-      const rightLines = lines.filter((l) => l.x0 >= gutterX).length;
-      if (leftLines >= n * 0.2 && rightLines >= n * 0.2 && (!best || j - i > best.span)) {
-        best = { x: gutterX, span: j - i };
-      }
+    while (j + 1 < bins && coverage[j + 1] <= n * 0.03) j++;
+    const gutterX = ((i + j + 1) / 2) * binW;
+    const left = boxes.filter((b) => b.x1 <= gutterX);
+    const right = boxes.filter((b) => b.x0 >= gutterX);
+    if (left.length >= n * 0.2 && right.length >= n * 0.2) {
+      // The right column must have an aligned left edge.
+      const edge = weightedMode(right.map((b) => [b.x0, 1]), (v) => Math.round(v / 3) * 3);
+      const aligned = right.filter((b) => Math.abs(b.x0 - edge) <= 4).length / right.length;
+      if (aligned >= 0.4 && (!best || j - i > best.span)) best = { x: gutterX, span: j - i };
     }
     i = j;
   }
@@ -224,13 +254,10 @@ export function detectGutter(lines, pageWidth) {
 }
 
 /**
- * Re-order the lines of a page so that a two-column body is read one column
- * at a time. Full-width lines (header, footer, section rules) act as
- * separators between column blocks.
+ * Order lines that carry a `column` property so each column block is read
+ * top-to-bottom; full-width (column 0) lines flush pending column text.
  */
-export function orderColumns(lines, pageWidth) {
-  const gutter = detectGutter(lines, pageWidth);
-  if (gutter == null) return lines.map((l) => ({ ...l, column: 0 }));
+export function orderColumns(lines) {
   const ordered = [];
   let left = [];
   let right = [];
@@ -240,8 +267,8 @@ export function orderColumns(lines, pageWidth) {
     right = [];
   };
   for (const ln of lines) {
-    if (ln.x1 <= gutter + 2) left.push({ ...ln, column: 1 });
-    else if (ln.x0 >= gutter - 2) right.push({ ...ln, column: 2 });
+    if (ln.column === 1) left.push(ln);
+    else if (ln.column === 2) right.push(ln);
     else {
       flush();
       ordered.push({ ...ln, column: 0 });
@@ -254,7 +281,7 @@ export function orderColumns(lines, pageWidth) {
 function percentile(values, p) {
   if (!values.length) return 0;
   const sorted = [...values].sort((a, b) => a - b);
-  const idx = Math.min(sorted.length - 1, Math.max(0, Math.floor(p * (sorted.length - 1))));
+  const idx = Math.min(sorted.length - 1, Math.max(0, Math.ceil(p * (sorted.length - 1))));
   return sorted[idx];
 }
 
@@ -312,15 +339,15 @@ export function computeStats(lines) {
  */
 export function annotateLines(lines, stats = computeStats(lines)) {
   const { bodySize, bodyLeft, lineHeight, bodyFont } = stats;
-  // Right margin per indentation cluster (bullets often have their own right indent).
-  const clusterRight = new Map();
+  // Right margin per column (text in a sidebar wraps at the sidebar edge).
+  const columnRight = new Map();
   for (const l of lines) {
-    const key = Math.round(l.x0 / 4);
-    const arr = clusterRight.get(key) || [];
+    const key = l.column || 0;
+    const arr = columnRight.get(key) || [];
     arr.push(l.x1);
-    clusterRight.set(key, arr);
+    columnRight.set(key, arr);
   }
-  const rightFor = (l) => percentile(clusterRight.get(Math.round(l.x0 / 4)) || [l.x1], 0.95);
+  const rightFor = (l) => Math.max(percentile(columnRight.get(l.column || 0) || [l.x1], 0.97), stats.rightMargin || 0);
 
   let prev = null;
   for (const l of lines) {
@@ -361,7 +388,9 @@ function guessContinues(line, prev, bodySize, rightFor) {
   const avgChar = line.text.length ? (line.x1 - line.x0) / line.text.length : bodySize * 0.5;
   const needed = prev.x1 + avgChar * (firstWord.length + 1);
   const wouldNotFit = needed > rightFor(prev) - avgChar;
-  if (wouldNotFit) return true;
+  // One sentence per bullet is the norm: a completed sentence followed by a
+  // capitalised line is a new item even when the word would not have fit.
+  if (wouldNotFit && !(endsSentence(prev.text) && /^[A-Z]/.test(line.text))) return true;
   // Prose cue: previous line clearly mid-sentence and this line starts in lower case.
   if (!endsSentence(prev.text) && /^[a-z]/.test(line.text)) return true;
   return false;

@@ -7,7 +7,7 @@
  * conventional line order break ties.
  */
 
-import { findDateRanges, stripDates, toISO } from "./dates.js";
+import { findDateRanges, findDates, stripDates, toISO } from "./dates.js";
 import { extractLocation } from "./contact.js";
 import { segmentEntries, bodyToHighlights } from "./entries.js";
 import { normalizeWhitespace, wordCount, splitOutsideParens } from "./text.js";
@@ -85,11 +85,14 @@ export function parseHeaderBlock(headerParas) {
     startDate = toISO(r.start);
     if (r.end.present) current = true;
     else endDate = toISO(r.end);
+  } else {
+    const singles = findDates(joined);
+    if (singles.length) startDate = toISO(singles[0].date);
   }
 
   // Location: a "City, ST" / "City, Country" fragment.
-  const loc = extractLocation(joined, { strict: true }) || extractLocation(stripDates(joined), { strict: false });
-  const locationText = loc ? `${loc.city}, ${loc.region}` : "";
+  let loc = extractLocation(joined, { strict: true }) || extractLocation(stripDates(joined), { strict: false });
+  let locationText = loc ? `${loc.city}, ${loc.region}` : "";
 
   // Strip dates/location from each line and split into pieces.
   const pieces = [];
@@ -137,12 +140,20 @@ export function parseHeaderBlock(headerParas) {
     }
   }
 
-  // "Company, City" residue: if organisation is empty but position contains a comma, split.
+  // "Role, Organisation[, Course][, City]" residue: split a comma list.
   if (position && !organisation && position.includes(",")) {
-    const [a, b] = splitOutsideParens(position, ",");
-    if (a && b && (looksLikeOrg(b) || (!looksLikeRole(b) && wordCount(b) <= 5))) {
-      position = a;
-      organisation = b;
+    const segments = splitOutsideParens(position, ",");
+    if (segments.length >= 2) {
+      const rest = segments.slice(1);
+      const orgIdx = rest.findIndex((seg) => looksLikeOrg(seg));
+      const pick = orgIdx >= 0 ? orgIdx : rest.length - 1;
+      const cand = rest[pick];
+      if (cand && !looksLikeRole(cand) && wordCount(cand) <= 6) {
+        position = segments[0];
+        organisation = cand;
+        const trailing = rest.slice(pick + 1).filter((seg) => wordCount(seg) <= 2 && !/\d/.test(seg));
+        if (!locationText && trailing.length) locationText = trailing.join(", ");
+      }
     }
   }
 
