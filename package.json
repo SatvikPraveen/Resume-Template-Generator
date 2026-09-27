@@ -1,0 +1,22 @@
+{
+  "name": "resume-template-generator",
+  "version": "4.0.0",
+  "description": "Layout-aware resume parsing (PDF to JSON Resume) with a reproducible evaluation harness and 12 render templates. Runs entirely in the browser.",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "test": "node --test test/",
+    "eval": "node eval/run.js",
+    "eval:check": "node eval/run.js --check",
+    "fixtures:pdf": "node eval/make-pdf-fixtures.js",
+    "serve": "python3 -m http.server 8000"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "pdfjs-dist": "^4.10.38",
+    "pdfkit": "^0.15.0"
+  },
+  "license": "MIT"
+}
