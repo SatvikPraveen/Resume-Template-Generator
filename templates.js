@@ -1,23 +1,11 @@
+import { formatDateRange } from "./src/parse/dates.js";
+import { renderEntryBody, SHARED_CSS } from "./src/render/model.js";
+
 const TEMPLATES = {
   classic: {
     name: "Classic",
     render: (data) => {
-      const formatDate = (start, end) => {
-        if (!end)
-          return start
-            ? new Date(start).toLocaleDateString("en-US", {
-                year: "numeric",
-                month: "short",
-              })
-            : "";
-        return `${new Date(start).toLocaleDateString("en-US", {
-          year: "numeric",
-          month: "short",
-        })} - ${new Date(end).toLocaleDateString("en-US", {
-          year: "numeric",
-          month: "short",
-        })}`;
-      };
+      const formatDate = (start, end) => formatDateRange(start, end);
 
       const html = `
         <div class="resume-content">
@@ -57,7 +45,7 @@ const TEMPLATES = {
                     )}</span>
                   </div>
                   <p class="company">${job.company || "Company"}</p>
-                  ${job.summary ? `<p>${job.summary}</p>` : ""}
+                  ${renderEntryBody(job, "")}
                 </div>
               `
                 )
@@ -131,7 +119,7 @@ const TEMPLATES = {
                   (proj) => `
                 <div class="entry">
                   <h3>${proj.name || "Project"}</h3>
-                  ${proj.summary ? `<p>${proj.summary}</p>` : ""}
+                  ${renderEntryBody(proj, "")}
                   ${
                     proj.keywords && proj.keywords.length
                       ? `<p class="project-tech"><strong>Tech:</strong> ${proj.keywords.join(
@@ -302,22 +290,7 @@ const TEMPLATES = {
   modern: {
     name: "Modern",
     render: (data) => {
-      const formatDate = (start, end) => {
-        if (!end)
-          return start
-            ? new Date(start).toLocaleDateString("en-US", {
-                year: "numeric",
-                month: "short",
-              })
-            : "";
-        return `${new Date(start).toLocaleDateString("en-US", {
-          year: "numeric",
-          month: "short",
-        })} - ${new Date(end).toLocaleDateString("en-US", {
-          year: "numeric",
-          month: "short",
-        })}`;
-      };
+      const formatDate = (start, end) => formatDateRange(start, end);
 
       const html = `
         <div class="resume-content modern-enhanced">
@@ -413,11 +386,7 @@ const TEMPLATES = {
                         job.endDate
                       )}</span>
                     </div>
-                    ${
-                      job.summary
-                        ? `<p class="card-description">${job.summary}</p>`
-                        : ""
-                    }
+                    ${renderEntryBody(job, " class=\"card-description\"")}
                   </div>
                 `
                   )
@@ -470,7 +439,7 @@ const TEMPLATES = {
                       (proj) => `
                     <div class="project-card">
                       <h3>${proj.name || "Project"}</h3>
-                      ${proj.summary ? `<p>${proj.summary}</p>` : ""}
+                      ${renderEntryBody(proj, "")}
                       ${
                         proj.keywords && proj.keywords.length
                           ? `<p class="project-tech"><strong>Tech:</strong> ${proj.keywords.join(
@@ -730,22 +699,7 @@ const TEMPLATES = {
   creative: {
     name: "Creative",
     render: (data) => {
-      const formatDate = (start, end) => {
-        if (!end)
-          return start
-            ? new Date(start).toLocaleDateString("en-US", {
-                year: "numeric",
-                month: "short",
-              })
-            : "";
-        return `${new Date(start).toLocaleDateString("en-US", {
-          year: "numeric",
-          month: "short",
-        })} - ${new Date(end).toLocaleDateString("en-US", {
-          year: "numeric",
-          month: "short",
-        })}`;
-      };
+      const formatDate = (start, end) => formatDateRange(start, end);
 
       const html = `
         <div class="resume-content creative-portfolio">
@@ -802,11 +756,7 @@ const TEMPLATES = {
                       job.startDate,
                       job.endDate
                     )}</p>
-                    ${
-                      job.summary
-                        ? `<p class="card-text">${job.summary}</p>`
-                        : ""
-                    }
+                    ${renderEntryBody(job, " class=\"card-text\"")}
                   </div>
                 `
                   )
@@ -862,11 +812,7 @@ const TEMPLATES = {
                     <div class="project-header">
                       <h3>${proj.name || "Project"}</h3>
                     </div>
-                    ${
-                      proj.summary
-                        ? `<p class="project-desc">${proj.summary}</p>`
-                        : ""
-                    }
+                    ${renderEntryBody(proj, " class=\"project-desc\"")}
                     ${
                       proj.keywords && proj.keywords.length
                         ? `<p class="project-tech"><strong>Tech:</strong> ${proj.keywords.join(
@@ -1165,22 +1111,7 @@ const TEMPLATES = {
   tech: {
     name: "Tech",
     render: (data) => {
-      const formatDate = (start, end) => {
-        if (!end)
-          return start
-            ? new Date(start).toLocaleDateString("en-US", {
-                year: "numeric",
-                month: "short",
-              })
-            : "";
-        return `${new Date(start).toLocaleDateString("en-US", {
-          year: "numeric",
-          month: "short",
-        })} - ${new Date(end).toLocaleDateString("en-US", {
-          year: "numeric",
-          month: "short",
-        })}`;
-      };
+      const formatDate = (start, end) => formatDateRange(start, end);
 
       // Calculate experience level based on work history
       const totalYears = data.work ? Math.round(data.work.length * 2.5) : 0;
@@ -1833,22 +1764,7 @@ ${(
   executive: {
     name: "Executive",
     render: (data) => {
-      const formatDate = (start, end) => {
-        if (!end)
-          return start
-            ? new Date(start).toLocaleDateString("en-US", {
-                year: "numeric",
-                month: "short",
-              })
-            : "";
-        return `${new Date(start).toLocaleDateString("en-US", {
-          year: "numeric",
-          month: "short",
-        })} - ${new Date(end).toLocaleDateString("en-US", {
-          year: "numeric",
-          month: "short",
-        })}`;
-      };
+      const formatDate = (start, end) => formatDateRange(start, end);
 
       const html = `
         <div class="resume-content executive-formal">
@@ -1906,11 +1822,7 @@ ${(
                       job.endDate
                     )}</span>
                   </div>
-                  ${
-                    job.summary
-                      ? `<p class="formal-text">${job.summary}</p>`
-                      : ""
-                  }
+                  ${renderEntryBody(job, " class=\"formal-text\"")}
                 </div>
               `
                 )
@@ -1987,11 +1899,7 @@ ${(
                   (proj) => `
                 <div class="formal-entry compact">
                   <h3>▸ ${proj.name || "Project"}</h3>
-                  ${
-                    proj.summary
-                      ? `<p class="formal-text">${proj.summary}</p>`
-                      : ""
-                  }
+                  ${renderEntryBody(proj, " class=\"formal-text\"")}
                   ${
                     proj.keywords && proj.keywords.length
                       ? `<p class="project-tech"><strong>Tech:</strong> ${proj.keywords.join(
@@ -2191,22 +2099,7 @@ ${(
   compact: {
     name: "Compact",
     render: (data) => {
-      const formatDate = (start, end) => {
-        if (!end)
-          return start
-            ? new Date(start).toLocaleDateString("en-US", {
-                year: "numeric",
-                month: "short",
-              })
-            : "";
-        return `${new Date(start).toLocaleDateString("en-US", {
-          year: "numeric",
-          month: "short",
-        })} - ${new Date(end).toLocaleDateString("en-US", {
-          year: "numeric",
-          month: "short",
-        })}`;
-      };
+      const formatDate = (start, end) => formatDateRange(start, end);
 
       const html = `
         <div class="resume-content swiss-grid">
@@ -2293,11 +2186,7 @@ ${(
                         <div class="entry-content">
                           <h3>${job.position || "Position"}</h3>
                           <p class="company">${job.company || "Company"}</p>
-                          ${
-                            job.summary
-                              ? `<p class="description">${job.summary}</p>`
-                              : ""
-                          }
+                          ${renderEntryBody(job, " class=\"description\"")}
                         </div>
                       </div>
                     `
@@ -2351,7 +2240,7 @@ ${(
                       (proj) => `
                     <div class="project-item">
                       <h3>${proj.name}</h3>
-                      ${proj.summary ? `<p>${proj.summary}</p>` : ""}
+                      ${renderEntryBody(proj, "")}
                       ${
                         proj.keywords && proj.keywords.length
                           ? `<p class="project-tech"><strong>Tech:</strong> ${proj.keywords.join(
@@ -2529,22 +2418,7 @@ ${(
   minimal: {
     name: "Minimal",
     render: (data) => {
-      const formatDate = (start, end) => {
-        if (!end)
-          return start
-            ? new Date(start).toLocaleDateString("en-US", {
-                year: "numeric",
-                month: "short",
-              })
-            : "";
-        return `${new Date(start).toLocaleDateString("en-US", {
-          year: "numeric",
-          month: "short",
-        })} - ${new Date(end).toLocaleDateString("en-US", {
-          year: "numeric",
-          month: "short",
-        })}`;
-      };
+      const formatDate = (start, end) => formatDateRange(start, end);
 
       const html = `
         <div class="resume-content zen-minimal">
@@ -2582,7 +2456,7 @@ ${(
                     <span>${formatDate(job.startDate, job.endDate)}</span>
                   </div>
                   <p class="zen-company">${job.company || "Company"}</p>
-                  ${job.summary ? `<p class="zen-text">${job.summary}</p>` : ""}
+                  ${renderEntryBody(job, " class=\"zen-text\"")}
                 </div>
               `
                 )
@@ -2653,11 +2527,7 @@ ${(
                   (proj) => `
                 <div class="zen-entry">
                   <h3>${proj.name}</h3>
-                  ${
-                    proj.summary
-                      ? `<p class="zen-text">${proj.summary}</p>`
-                      : ""
-                  }
+                  ${renderEntryBody(proj, " class=\"zen-text\"")}
                   ${
                     proj.keywords && proj.keywords.length
                       ? `<p class="zen-text"><strong>Tech:</strong> ${proj.keywords.join(
@@ -2815,22 +2685,7 @@ ${(
   colorful: {
     name: "Colorful",
     render: (data) => {
-      const formatDate = (start, end) => {
-        if (!end)
-          return start
-            ? new Date(start).toLocaleDateString("en-US", {
-                year: "numeric",
-                month: "short",
-              })
-            : "";
-        return `${new Date(start).toLocaleDateString("en-US", {
-          year: "numeric",
-          month: "short",
-        })} - ${new Date(end).toLocaleDateString("en-US", {
-          year: "numeric",
-          month: "short",
-        })}`;
-      };
+      const formatDate = (start, end) => formatDateRange(start, end);
       const colors = ["#FF6B6B", "#4ECDC4", "#45B7D1", "#FFA07A", "#98D8C8"];
 
       const html = `
@@ -2866,7 +2721,7 @@ ${(
                       job.startDate,
                       job.endDate
                     )}</p>
-                    ${job.summary ? `<p>${job.summary}</p>` : ""}
+                    ${renderEntryBody(job, "")}
                   </div>
                 `
                   )
@@ -2943,7 +2798,7 @@ ${(
                     colors[(idx + 1) % colors.length]
                   }">
                     <h3>${proj.name || "Project"}</h3>
-                    ${proj.summary ? `<p>${proj.summary}</p>` : ""}
+                    ${renderEntryBody(proj, "")}
                     ${
                       proj.keywords && proj.keywords.length
                         ? `<p class="project-tech"><strong>Tech:</strong> ${proj.keywords.join(
@@ -3059,22 +2914,7 @@ ${(
   dark: {
     name: "Dark",
     render: (data) => {
-      const formatDate = (start, end) => {
-        if (!end)
-          return start
-            ? new Date(start).toLocaleDateString("en-US", {
-                year: "numeric",
-                month: "short",
-              })
-            : "";
-        return `${new Date(start).toLocaleDateString("en-US", {
-          year: "numeric",
-          month: "short",
-        })} - ${new Date(end).toLocaleDateString("en-US", {
-          year: "numeric",
-          month: "short",
-        })}`;
-      };
+      const formatDate = (start, end) => formatDateRange(start, end);
 
       const html = `
         <div class="resume-content cyberpunk-dark">
@@ -3482,22 +3322,7 @@ ${(
   ats: {
     name: "ATS-Friendly",
     render: (data) => {
-      const formatDate = (start, end) => {
-        if (!end)
-          return start
-            ? new Date(start).toLocaleDateString("en-US", {
-                year: "numeric",
-                month: "short",
-              })
-            : "";
-        return `${new Date(start).toLocaleDateString("en-US", {
-          year: "numeric",
-          month: "short",
-        })} - ${new Date(end).toLocaleDateString("en-US", {
-          year: "numeric",
-          month: "short",
-        })}`;
-      };
+      const formatDate = (start, end) => formatDateRange(start, end);
 
       const html = `
         <div class="resume-content ats">
@@ -3532,7 +3357,7 @@ ${(
                   job.startDate,
                   job.endDate
                 )}</p>
-              ${job.summary ? `<p>${job.summary}</p>` : ""}
+              ${renderEntryBody(job, "")}
             `
               )
               .join("")}
@@ -3585,7 +3410,7 @@ ${(
               .map(
                 (proj) => `
               <h3>${proj.name || "Project"}</h3>
-              ${proj.summary ? `<p>${proj.summary}</p>` : ""}
+              ${renderEntryBody(proj, "")}
               ${
                 proj.keywords && proj.keywords.length
                   ? `<p><strong>Technologies:</strong> ${proj.keywords.join(
@@ -3669,22 +3494,7 @@ ${(
   academic: {
     name: "Academic",
     render: (data) => {
-      const formatDate = (start, end) => {
-        if (!end)
-          return start
-            ? new Date(start).toLocaleDateString("en-US", {
-                year: "numeric",
-                month: "short",
-              })
-            : "";
-        return `${new Date(start).toLocaleDateString("en-US", {
-          year: "numeric",
-          month: "short",
-        })} - ${new Date(end).toLocaleDateString("en-US", {
-          year: "numeric",
-          month: "short",
-        })}`;
-      };
+      const formatDate = (start, end) => formatDateRange(start, end);
 
       const html = `
         <div class="resume-content academic">
@@ -3742,11 +3552,7 @@ ${(
                     job.startDate,
                     job.endDate
                   )}</p>
-                  ${
-                    job.summary
-                      ? `<p class="entry-desc">${job.summary}</p>`
-                      : ""
-                  }
+                  ${renderEntryBody(job, " class=\"entry-desc\"")}
                 </div>
               `
                 )
@@ -3791,11 +3597,7 @@ ${(
                   <p class="entry-title"><strong>${
                     proj.name || "Project"
                   }</strong></p>
-                  ${
-                    proj.summary
-                      ? `<p class="entry-desc">${proj.summary}</p>`
-                      : ""
-                  }
+                  ${renderEntryBody(proj, " class=\"entry-desc\"")}
                   ${
                     proj.keywords && proj.keywords.length
                       ? `<p class="entry-desc"><strong>Technologies:</strong> ${proj.keywords.join(
@@ -3943,22 +3745,7 @@ ${(
   corporate: {
     name: "Corporate",
     render: (data) => {
-      const formatDate = (start, end) => {
-        if (!end)
-          return start
-            ? new Date(start).toLocaleDateString("en-US", {
-                year: "numeric",
-                month: "short",
-              })
-            : "";
-        return `${new Date(start).toLocaleDateString("en-US", {
-          year: "numeric",
-          month: "short",
-        })} - ${new Date(end).toLocaleDateString("en-US", {
-          year: "numeric",
-          month: "short",
-        })}`;
-      };
+      const formatDate = (start, end) => formatDateRange(start, end);
 
       const html = `
         <div class="resume-content corporate">
@@ -4033,11 +3820,7 @@ ${(
                       <span>${formatDate(job.startDate, job.endDate)}</span>
                     </div>
                     <p class="job-company">${job.company || "Company"}</p>
-                    ${
-                      job.summary
-                        ? `<p class="job-desc">${job.summary}</p>`
-                        : ""
-                    }
+                    ${renderEntryBody(job, " class=\"job-desc\"")}
                   </div>
                 `
                   )
@@ -4104,11 +3887,7 @@ ${(
                     (proj) => `
                   <div class="corp-job">
                     <h3>${proj.name || "Project"}</h3>
-                    ${
-                      proj.summary
-                        ? `<p class="job-desc">${proj.summary}</p>`
-                        : ""
-                    }
+                    ${renderEntryBody(proj, " class=\"job-desc\"")}
                     ${
                       proj.keywords && proj.keywords.length
                         ? `<p class="job-desc"><strong>Technologies:</strong> ${proj.keywords.join(
@@ -4266,5 +4045,9 @@ function renderTemplate(templateName, resumeData) {
     console.error(`Template "${templateName}" not found`);
     return { html: "<p>Template not found</p>", css: "" };
   }
-  return template.render(resumeData);
+  const result = template.render(resumeData);
+  return { html: result.html || "", css: (result.css || "") + SHARED_CSS };
 }
+
+export const TEMPLATE_NAMES = Object.keys(TEMPLATES);
+export { TEMPLATES, renderTemplate };

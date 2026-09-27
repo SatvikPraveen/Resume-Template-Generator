@@ -942,3 +942,92 @@ body {
     margin: 0.5in;
   }
 }
+
+/* ==================== PARSER DIAGNOSTICS ==================== */
+.upload-box.drag-over {
+  border-color: var(--primary);
+  background: rgba(59, 130, 246, 0.08);
+}
+
+.text-input-details {
+  margin-top: 1rem;
+  color: var(--text-secondary);
+}
+
+.text-input-details summary {
+  cursor: pointer;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+.text-input-details .text-input {
+  margin: 0.75rem 0;
+  min-height: 160px;
+}
+
+.data-preview .muted {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.data-preview code {
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  font-size: 0.8em;
+  background: var(--bg-elevated);
+  padding: 0.05em 0.35em;
+  border-radius: var(--radius-sm);
+}
+
+.data-preview .warnings ul {
+  margin: 0.25rem 0 0 1.1rem;
+  color: var(--warning);
+  font-size: 0.9rem;
+}
+
+.conf-row {
+  display: grid;
+  grid-template-columns: 6.5rem 1fr 3rem;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 0.3rem 0;
+  font-size: 0.85rem;
+}
+
+.conf-label {
+  text-transform: capitalize;
+  color: var(--text-secondary);
+}
+
+.conf-track {
+  display: block;
+  height: 0.5rem;
+  background: var(--bg-elevated);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.conf-fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--success);
+  transition: width 0.3s ease;
+}
+
+.conf-fill.medium {
+  background: var(--warning);
+}
+
+.conf-fill.low {
+  background: var(--danger);
+}
+
+.conf-pct {
+  text-align: right;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.btn-copy.copied {
+  color: var(--success);
+}

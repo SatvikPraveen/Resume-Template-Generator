@@ -1,1628 +1,476 @@
-// ==================== TEXT NORMALIZATION ====================
-// Clean and normalize PDF text with malformed spacing
-function cleanAndNormalizeText(text) {
-  if (!text) return "";
+/**
+ * Application entry point (ES module).
+ *
+ * Flow: PDF -> layout lines (src/extract) -> JSON Resume (src/pipeline)
+ *       -> template model (src/render/model.js) -> template HTML (templates.js)
+ */
 
-  let cleaned = text
-    // Replace multiple spaces/tabs with single space
-    .replace(/[ \t]+/g, " ")
-    // Normalize common dash characters
-    .replace(/[-–—]/g, "-")
-    // Clean up EXCESSIVE newlines (3+ becomes 2) but preserve structure-defining blank lines
-    .replace(/\n\s*\n\s*\n+/g, "\n\n")
-    // Remove spaces before common punctuation
-    .replace(/\s+([.,;:])/g, "$1")
-    .trim();
+import * as pdfjsLib from "./vendor/pdf.mjs";
+import { extractDocument } from "./src/extract/pdf.js";
+import { parseLines, parseText, PARSER_VERSION } from "./src/pipeline.js";
+import { renderTemplate } from "./templates.js";
+import { toTemplateModel } from "./src/render/model.js";
+import { escapeHtml } from "./src/parse/text.js";
 
-  return cleaned;
-}
+pdfjsLib.GlobalWorkerOptions.workerSrc = new URL("./vendor/pdf.worker.mjs", import.meta.url).href;
 
-// ==================== PARSER CONFIGURATION ====================
-// Version 3.0 - COMPLETE REWRITE: Block-based extraction with proper boundaries
-// Toggle to use robust parser when current parser fails
-const USE_ROBUST_PARSER = true;
-const USE_ROBUST_AS_PRIMARY = true; // Use robust parser as primary
-let robustParser = null;
+const MAX_FILE_BYTES = 10 * 1024 * 1024;
 
-// Initialize robust parser if available
-if (typeof RobustResumeParser !== 'undefined' && USE_ROBUST_PARSER) {
-  robustParser = new RobustResumeParser();
-}
-
-// ==================== STATE MANAGEMENT ====================
-let STATE = {
+const STATE = {
   pdfFile: null,
   pdfArrayBuffer: null,
   rawText: "",
-  resumeData: null,
-  currentTemplate: null,
+  resume: null,
+  currentTemplate: "classic",
+  busy: false,
 };
 
-// Timer that reveals a "still working" hint if parsing runs long
 let stillWorkingTimer = null;
 
-// Demo sample data used to render template previews when no resume is loaded
-const SAMPLE_DATA = {
+// Demo document rendered before a resume is loaded (JSON Resume shape).
+const SAMPLE_RESUME = {
   basics: {
     name: "Jane Doe",
     label: "Product Designer",
     email: "jane.doe@example.com",
     phone: "+1 555-123-4567",
     url: "https://janedoe.design",
-    location: "San Francisco, CA",
+    location: { city: "San Francisco", region: "CA" },
     summary:
       "Creative product designer with 8+ years building delightful user experiences across web and mobile platforms.",
   },
   work: [
     {
+      name: "Acme Corp",
       position: "Senior Product Designer",
-      company: "Acme Corp",
-      startDate: "Jan 2020",
-      endDate: "Present",
-      summary:
-        "Leading design for core web products. Focused on usability, accessibility, and scalable design systems.",
+      startDate: "2020-01",
+      highlights: [
+        "Lead design for core web products used by 2M monthly users.",
+        "Built an accessible design system adopted by six product teams.",
+      ],
     },
   ],
   education: [
-    {
-      institution: "University of Design",
-      studyType: "Bachelor's",
-      area: "Interaction Design",
-      startDate: "2010",
-      endDate: "2014",
-      location: "Boston, MA",
-    },
+    { institution: "University of Design", studyType: "Bachelor's", area: "Interaction Design", startDate: "2010", endDate: "2014", location: "Boston, MA" },
   ],
   skills: [
     { name: "Design", keywords: ["Figma", "Sketch", "Prototyping"] },
     { name: "Front-end", keywords: ["HTML", "CSS", "JavaScript"] },
   ],
   projects: [
-    {
-      name: "Design System Revamp",
-      keywords: ["Design System", "Accessibility"],
-      summary:
-        "Led a cross-functional initiative to standardize components and tokens.",
-    },
+    { name: "Design System Revamp", keywords: ["Design System", "Accessibility"], description: "Led a cross-functional initiative to standardize components and tokens." },
   ],
 };
 
-// ==================== INITIALIZATION ====================
-document.addEventListener("DOMContentLoaded", function () {
+const $ = (id) => document.getElementById(id);
+
+document.addEventListener("DOMContentLoaded", () => {
   initializeEventListeners();
   renderSamplePreview();
+  const v = $("parserVersion");
+  if (v) v.textContent = `parser v${PARSER_VERSION}`;
 });
 
 function initializeEventListeners() {
+  $("pdfInput").addEventListener("change", handleFileSelect);
+  $("parseBtn").addEventListener("click", handleParsePDF);
+  $("removeFile").addEventListener("click", handleRemoveFile);
 
-  // File upload
-  const pdfInput = document.getElementById("pdfInput");
-  const uploadBox = document.getElementById("uploadBox");
-  const parseBtn = document.getElementById("parseBtn");
-  const removeFile = document.getElementById("removeFile");
-
-  if (!pdfInput) console.error("[Init] pdfInput not found!");
-  if (!uploadBox) console.error("[Init] uploadBox not found!");
-  if (!parseBtn) console.error("[Init] parseBtn not found!");
-  if (!removeFile) console.error("[Init] removeFile not found!");
-
-  pdfInput.addEventListener("change", handleFileSelect);
-
-  parseBtn.addEventListener("click", handleParsePDF);
-
-  removeFile.addEventListener("click", handleRemoveFile);
-
-  // Drag and drop
+  const uploadBox = $("uploadBox");
   uploadBox.addEventListener("dragover", handleDragOver);
   uploadBox.addEventListener("dragleave", handleDragLeave);
   uploadBox.addEventListener("drop", handleDrop);
 
-  // Tabs
-  const tabBtns = document.querySelectorAll(".tab-btn");
-  tabBtns.forEach((btn) => {
-    btn.addEventListener("click", handleTabSwitch);
-  });
+  const parseTextBtn = $("parseTextBtn");
+  if (parseTextBtn) parseTextBtn.addEventListener("click", handleParseText);
 
-  // Template cards
-  const templateCards = document.querySelectorAll(".template-card");
-  templateCards.forEach((card) => {
-    card.addEventListener("click", handleTemplateSelect);
-  });
+  document.querySelectorAll(".tab-btn").forEach((btn) => btn.addEventListener("click", handleTabSwitch));
+  document.querySelectorAll(".template-card").forEach((card) => card.addEventListener("click", handleTemplateSelect));
+  document.querySelectorAll(".btn-copy[data-copy]").forEach((btn) =>
+    btn.addEventListener("click", () => copyToClipboard(btn.dataset.copy, btn)),
+  );
 
-  // Export buttons
-  document.getElementById("exportBtn").addEventListener("click", handleExport);
-  document
-    .getElementById("downloadJsonBtn")
-    .addEventListener("click", handleDownloadJSON);
-  document.getElementById("printBtn").addEventListener("click", handlePrint);
+  $("exportBtn").addEventListener("click", handleExport);
+  $("downloadJsonBtn").addEventListener("click", handleDownloadJSON);
+  $("printBtn").addEventListener("click", handlePrint);
 }
 
-// Show a sample preview on page load so the resume container isn't blank
 function renderSamplePreview() {
-  const defaultTemplate = "classic";
-  STATE.currentTemplate = defaultTemplate;
-
-  // mark the default card active
-  const defaultCard = document.querySelector(
-    `.template-card[data-template="${defaultTemplate}"]`
-  );
-  if (defaultCard) defaultCard.classList.add("active");
-
-  // Render sample data into the preview area
+  const card = document.querySelector(`.template-card[data-template="${STATE.currentTemplate}"]`);
+  if (card) card.classList.add("active");
   renderCurrentTemplate();
 }
 
 // ==================== FILE HANDLING ====================
+function isPdfFile(file) {
+  return (file.type && file.type.includes("pdf")) || /\.pdf$/i.test(file.name || "");
+}
+
 function handleFileSelect(e) {
-
   hideUploadError();
+  const file = e.target.files && e.target.files[0];
+  if (!file) return;
+  acceptFile(file);
+}
 
-  const file = e.target.files[0];
-  if (!file) {
-    console.warn("[File Upload] No file selected");
+function acceptFile(file) {
+  if (!isPdfFile(file)) {
+    showUploadError("Please upload a PDF file.");
     return;
   }
-
-  if (!file.type.includes("pdf")) {
-    console.error("[File Upload] Not a PDF file, type is:", file.type);
-    alert("Please upload a PDF file.");
+  if (file.size > MAX_FILE_BYTES) {
+    showUploadError("File size exceeds 10MB. Please upload a smaller file.");
     return;
   }
-
-  if (file.size > 10 * 1024 * 1024) {
-    console.error("[File Upload] File too large:", file.size);
-    alert("File size exceeds 10MB. Please upload a smaller file.");
-    return;
-  }
-
   STATE.pdfFile = file;
-
-  // Read file as ArrayBuffer
   const reader = new FileReader();
-
-  reader.onload = function (event) {
+  reader.onload = (event) => {
     STATE.pdfArrayBuffer = event.target.result;
     showFileInfo(file.name);
     updateParseButtonState();
   };
-
-  reader.onerror = function (error) {
-    console.error("[File Upload] FileReader error:", error);
-    alert("Failed to read file: " + error);
-  };
-
+  reader.onerror = () => showUploadError("Failed to read the file. Please try again.");
   reader.readAsArrayBuffer(file);
 }
 
 function handleRemoveFile() {
-  STATE = {
-    pdfFile: null,
-    pdfArrayBuffer: null,
-    rawText: "",
-    resumeData: null,
-    currentTemplate: null,
-  };
-
-  document.getElementById("pdfInput").value = "";
-  document.getElementById("fileInfo").classList.add("is-hidden");
+  STATE.pdfFile = null;
+  STATE.pdfArrayBuffer = null;
+  STATE.rawText = "";
+  STATE.resume = null;
+  $("pdfInput").value = "";
+  $("fileInfo").classList.add("is-hidden");
   updateParseButtonState();
-
-  // Reset UI
   hideUploadError();
   resetDataSection();
-  disableTemplates();
-  resetPreview();
+  setExportEnabled(false);
+  renderCurrentTemplate();
 }
 
 function showFileInfo(fileName) {
-  document.getElementById("fileName").textContent = fileName;
-  document.getElementById("fileInfo").classList.remove("is-hidden");
-}
-
-// ==================== ERROR & STATUS UI ====================
-// type: "error" (default) or "warning" - both use the same banner, just
-// with a different accent color.
-function showUploadError(message, type = "error") {
-  const errorBox = document.getElementById("uploadError");
-  const errorText = document.getElementById("uploadErrorText");
-
-  if (!errorBox || !errorText) {
-    // Fallback in case the error banner markup isn't present for some reason
-    alert(message);
-    return;
-  }
-
-  errorText.textContent = message;
-  errorBox.classList.toggle("warning", type === "warning");
-  errorBox.classList.remove("is-hidden");
-}
-
-function hideUploadError() {
-  const errorBox = document.getElementById("uploadError");
-  if (errorBox) errorBox.classList.add("is-hidden");
-}
-
-// Enabled only when a PDF has been loaded into memory AND the PDF engine
-// itself hasn't failed to load (that failure is terminal until refresh).
-function updateParseButtonState() {
-  const parseBtn = document.getElementById("parseBtn");
-  if (!parseBtn) return;
-  parseBtn.disabled = !STATE.pdfArrayBuffer || !!window.PDFTextExtractorError;
-}
-
-function showStillWorkingMessage() {
-  const statusText = document.getElementById("loadingStatusText");
-  if (statusText) {
-    statusText.textContent = "Still working — large files may take a moment…";
-  }
-}
-
-// Translate a raw error into a plain-English message for the upload section
-function getUserFriendlyParseErrorMessage(error) {
-  const msg = (error && error.message) || "";
-
-  const isEngineFailure =
-    msg.includes("did not load") ||
-    msg.includes("PDFTextExtractor module not available") ||
-    msg.includes("pdfjsLib is not loaded");
-
-  if (isEngineFailure) {
-    return "PDF engine failed to load. Please refresh the page and try again.";
-  }
-
-  return "Could not parse this PDF. Make sure it is text-based and not a scanned image. Try opening it in a PDF reader to confirm it has selectable text.";
+  $("fileName").textContent = fileName;
+  $("fileInfo").classList.remove("is-hidden");
 }
 
 function handleDragOver(e) {
   e.preventDefault();
-  e.stopPropagation();
-  e.currentTarget.style.borderColor = "var(--primary)";
-  e.currentTarget.style.background = "rgba(59, 130, 246, 0.05)";
+  e.currentTarget.classList.add("drag-over");
 }
 
 function handleDragLeave(e) {
   e.preventDefault();
-  e.stopPropagation();
-  e.currentTarget.style.borderColor = "var(--border-light)";
-  e.currentTarget.style.background = "var(--bg-elevated)";
+  e.currentTarget.classList.remove("drag-over");
 }
 
 function handleDrop(e) {
   e.preventDefault();
-  e.stopPropagation();
-
-  const uploadBox = e.currentTarget;
-  uploadBox.style.borderColor = "var(--border-light)";
-  uploadBox.style.background = "var(--bg-elevated)";
-
-  const files = e.dataTransfer.files;
-  if (files.length > 0) {
-    document.getElementById("pdfInput").files = files;
-    handleFileSelect({ target: { files: files } });
-  }
-}
-
-// ==================== PDF PARSING ====================
-async function handleParsePDF() {
-
-  if (!STATE.pdfArrayBuffer) {
-    console.error("[PDF Parsing] No PDF buffer available");
-    alert("Please select a PDF file first.");
-    return;
-  }
-
+  e.currentTarget.classList.remove("drag-over");
   hideUploadError();
-  showLoading(true);
-  stillWorkingTimer = setTimeout(showStillWorkingMessage, 8000);
-
-  try {
-    // Check if PDFTextExtractor is available
-
-    if (!window.PDFTextExtractor || !PDFTextExtractor.extractText) {
-      throw new Error(
-        "PDFTextExtractor module not available. window.PDFTextExtractor=" +
-          typeof window.PDFTextExtractor
-      );
+  const files = e.dataTransfer.files;
+  if (files && files.length > 0) {
+    try {
+      $("pdfInput").files = files;
+    } catch {
+      // Some browsers do not allow assigning FileList; state is enough.
     }
-
-    const extracted = await PDFTextExtractor.extractText(STATE.pdfArrayBuffer);
-
-    if (!extracted || !extracted.trim()) {
-      throw new Error("Extracted PDF text is empty");
-    }
-
-    STATE.rawText = extracted;
-
-    // Parse text into structured data
-    STATE.resumeData = parseResumeText(STATE.rawText);
-
-    // Update UI
-    updateDataSection();
-    enableTemplates();
-
-    showLoading(false);
-
-    // Warn (without blocking the rest of the flow) if parsing ran but
-    // found essentially nothing - likely an image-based PDF or an
-    // unusual layout/font the extractor couldn't read cleanly.
-    const data = STATE.resumeData;
-    const hasWork = data.work && data.work.length > 0;
-    const hasEducation = data.education && data.education.length > 0;
-    const hasSkills = data.skills && data.skills.length > 0;
-
-    if (!hasWork && !hasEducation && !hasSkills) {
-      showUploadError(
-        "Resume parsed but little data was found. The PDF may use a layout or font that is hard to extract. Try the JSON tab to see what was captured.",
-        "warning"
-      );
-    }
-
-    // Auto-select first template
-    const classicBtn = document.querySelector(
-      '.template-card[data-template="classic"]'
-    );
-    if (classicBtn) {
-      classicBtn.click();
-    } else {
-      console.warn("[PDF Parsing] Classic template button not found");
-    }
-  } catch (error) {
-    console.error("[PDF Parsing] ❌ ERROR:", error);
-    console.error("[PDF Parsing] Stack:", error.stack);
-    showUploadError(getUserFriendlyParseErrorMessage(error));
-    showLoading(false);
+    acceptFile(files[0]);
   }
 }
 
-function showLoading(show) {
-  const loading = document.getElementById("loadingIndicator");
-  const parseBtn = document.getElementById("parseBtn");
-  const statusText = document.getElementById("loadingStatusText");
+// ==================== ERROR & STATUS UI ====================
+function showUploadError(message, type = "error") {
+  const box = $("uploadError");
+  const text = $("uploadErrorText");
+  if (!box || !text) return;
+  text.textContent = message;
+  box.classList.toggle("warning", type === "warning");
+  box.classList.remove("is-hidden");
+}
 
-  if (show) {
-    if (statusText) statusText.textContent = "Parsing resume…";
+function hideUploadError() {
+  const box = $("uploadError");
+  if (box) box.classList.add("is-hidden");
+}
+
+function updateParseButtonState() {
+  $("parseBtn").disabled = STATE.busy || !STATE.pdfArrayBuffer;
+}
+
+function setBusy(busy, statusText = "Parsing resume…") {
+  STATE.busy = busy;
+  const loading = $("loadingIndicator");
+  const status = $("loadingStatusText");
+  if (busy) {
+    if (status) status.textContent = statusText;
     loading.classList.remove("is-hidden");
-    if (parseBtn) parseBtn.disabled = true; // always disabled while a parse is in flight
+    stillWorkingTimer = setTimeout(() => {
+      if (status) status.textContent = "Still working — large files may take a moment…";
+    }, 8000);
   } else {
     loading.classList.add("is-hidden");
-    updateParseButtonState();
-
-    // Parsing is done (success or failure) - stop the "still working" timer
-    if (stillWorkingTimer) {
-      clearTimeout(stillWorkingTimer);
-      stillWorkingTimer = null;
-    }
+    if (stillWorkingTimer) clearTimeout(stillWorkingTimer);
+    stillWorkingTimer = null;
   }
+  updateParseButtonState();
 }
 
-// ==================== TEXT PARSING ====================
-function parseResumeText(text) {
-  // CRITICAL: Clean text FIRST to handle malformed PDF spacing
-  const cleanedText = cleanAndNormalizeText(text);
-
-  // USE ROBUST PARSER AS PRIMARY if enabled
-  if (USE_ROBUST_AS_PRIMARY && robustParser) {
-    try {
-      const resumeData = robustParser.parseResume(cleanedText);
-      return resumeData;
-    } catch (error) {
-      console.error('[Parser] ❌ Robust parser failed, falling back to current parser:', error);
-    }
+function friendlyError(error) {
+  const msg = (error && error.message) || "";
+  if (/scanned image|No selectable text/i.test(msg)) {
+    return "No selectable text was found. This PDF appears to be a scanned image; run OCR first or export the resume from its source document.";
   }
-
-  // Fallback: Try current parsing method
-  let resumeData = parseResumeTextCurrent(cleanedText);
-  
-  // Check if parsing was successful (at least some data extracted)
-  const hasData = (
-    (resumeData.work && resumeData.work.length > 0) ||
-    (resumeData.education && resumeData.education.length > 0) ||
-    (resumeData.skills && resumeData.skills.length > 0) ||
-    (resumeData.projects && resumeData.projects.length > 0)
-  );
-
-  // If current parser failed and robust parser is available as fallback, use it
-  if (!hasData && robustParser && USE_ROBUST_PARSER && !USE_ROBUST_AS_PRIMARY) {
-    console.warn('[Parser] Current parser returned empty data. Trying robust parser...');
-    try {
-      resumeData = robustParser.parseResume(cleanedText);
-    } catch (error) {
-      console.error('[Parser] ❌ Robust parser also failed:', error);
-      // Fall back to current parser results (even if empty)
-    }
-  }
-
-  return resumeData;
+  if (/password|encrypted/i.test(msg)) return "This PDF is password protected. Remove the password and try again.";
+  if (/Invalid PDF|corrupt|XRef|missing PDF/i.test(msg)) return "The file does not look like a valid PDF.";
+  if (/worker|pdf\.js|pdfjs/i.test(msg)) return "The PDF engine failed to load. Refresh the page and try again.";
+  return "Could not parse this PDF. Make sure it is text-based (not a scanned image). Open the JSON tab to see what was captured.";
 }
 
-function parseResumeTextCurrent(cleanedText) {
-  // Original parsing logic (now as a separate function)
-  // Fallback: local/robust parsing (primary method)
-  const lines = cleanedText
-    .split("\n")
-    .map((l) => l.trim())
-    .filter((l) => l.length > 0);
-
-  // Extract basic info - handle pipe-separated contact info
-  let name = lines[0] || "Resume";
-  // Extract name from first line before pipe
-  if (name.includes("|")) {
-    let namePart = name.split("|")[0].trim();
-    // Remove phone/numbers: "Shanmuga Priya Kannan 872 - 330 - 3203" → "Shanmuga Priya Kannan"
-    namePart = namePart
-      .replace(/\s+\d+\s*[-–—]\s*\d+\s*[-–—]\s*\d+\s*$/, "")
-      .trim();
-    name = namePart;
-  }
-
-  const email = extractEmail(cleanedText);
-  const phone = extractPhone(cleanedText);
-  const url = extractURL(cleanedText);
-  const location = extractLocation(cleanedText);
-
-  // Extract job title/label - skip lines that contain contact info
-  let label = "";
-  for (let i = 1; i < Math.min(5, lines.length); i++) {
-    const line = lines[i];
-    // Skip if line contains contact info (phone, email, or location patterns)
-    const hasContactInfo = 
-      line.includes('@') || 
-      /\+?\d{1,3}[-\s]?\d{3}[-\s]?\d{3}[-\s]?\d{4}/.test(line) ||
-      /\d{3}[-\s]?\d{3}[-\s]?\d{4}/.test(line) ||
-      line.includes('linkedin.com') ||
-      line.includes('github.com') ||
-      /[A-Z][a-z]+,\s*[A-Z]{2}/.test(line); // City, ST pattern
-    
-    if (!hasContactInfo && line.length > 0 && line.length < 100) {
-      label = line;
-      break;
-    }
-  }
-
-  // Extract sections
-  const sections = identifySections(cleanedText);
-
-  // Build resume data object
-  const resumeData = {
-    basics: {
-      name: name,
-      label: label,
-      email: email,
-      phone: phone,
-      url: url,
-      location: location,
-      summary: sections.summary || sections.about || "",
-    },
-    work: parseWorkExperience(sections.experience || sections.work || ""),
-    education: parseEducation(sections.education || ""),
-    skills: parseSkills(sections.skills || sections["technical skills"] || ""),
-    projects: parseProjects(sections.projects || ""),
-    certifications: parseCertifications(sections.certifications || ""),
-  };
-
-  // Clean up common formatting issues
-  const cleanedData = cleanupResumeData(resumeData);
-
-  return cleanedData;
-}
-
-function extractEmail(text) {
-  const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/;
-  const match = text.match(emailRegex);
-  return match ? match[0] : "";
-}
-
-function extractPhone(text) {
-  // Try multiple phone patterns to handle various formats
-  const phonePatterns = [
-    // International with spaces (e.g., "+ 1 979 721 2039")
-    /\+\s*\d{1,3}\s+\d{3}\s+\d{3}\s+\d{4}/,
-    // International with dashes/dots
-    /\+\d{1,3}[-.\s]?\d{3}[-.\s]?\d{3}[-.\s]?\d{4}/,
-    // US format with country code
-    /\+?1[-.\s]?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/,
-    // Standard US format
-    /\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/,
-    // Spaced format
-    /\d{3}\s+\d{3}\s+\d{4}/,
-  ];
-  
-  for (const pattern of phonePatterns) {
-    const match = text.match(pattern);
-    if (match) {
-      // Clean up extra spaces but preserve format
-      return match[0].replace(/\s+/g, ' ').trim();
-    }
-  }
-  
-  return "";
-}
-
-function extractURL(text) {
-  const urlRegex = /(https?:\/\/[^\s]+)|(linkedin\.com\/[^\s]+)/i;
-  const match = text.match(urlRegex);
-  return match ? match[0] : "";
-}
-
-function extractLocation(text) {
-  // Look for location in the FIRST 10 lines only (header section)
-  // This avoids matching locations from education/work experience sections
-  const lines = text.split("\n").slice(0, 10).join("\n");
-
-  // Look for city, state/country patterns
-  // But exclude patterns like "Computer Science Chicago" (degree field with city)
-  // We're looking for just "City, State" patterns in contact info
-  const locationRegex =
-    /(?<![\s\w])([A-Z][a-z]+),\s*([A-Z]{2}|[A-Z][a-z]+)(?![a-z])/;
-  const match = lines.match(locationRegex);
-  return match ? match[0] : "";
-}
-
-function identifySections(text) {
-  const sections = {};
-
-  // Flexible section detection - handles variations and compound headers
-  // Pattern matches any word(s) followed by section keywords
-  const sectionPatterns = [
-    {
-      sectionName: "education",
-      pattern:
-        /(?:^|\n)\s*(?:E\s*D\s*U\s*C\s*A\s*T\s*I\s*O\s*N|EDUCATION|ACADEMIC(?:\s+\w+)*)\s*(?:\n|$)/gi,
-    },
-    {
-      sectionName: "experience",
-      // Matches: EXPERIENCE, PROFESSIONAL EXPERIENCE, WORK EXPERIENCE, VOLUNTEERING EXPERIENCE, etc.
-      // Using \w+ to match all-caps headers like "PROFESSIONAL EXPERIENCE"
-      pattern:
-        /(?:^|\n)\s*(?:\w+\s+)*?(?:EXPERIENCE|EMPLOYMENT|WORK\s+HISTORY|CAREER|VOLUNTEERING|E\s*X\s*P\s*E\s*R\s*I\s*E\s*N\s*C\s*E)\s*(?:\n|$)/gi,
-    },
-    {
-      sectionName: "projects",
-      pattern:
-        /(?:^|\n)\s*(?:(?:[A-Z][a-z]+\s+){0,2})?(?:PROJECTS?|PORTFOLIO|P\s*R\s*O\s*J\s*E\s*C\s*T\s*S)\s*(?:\n|$)/gi,
-    },
-    {
-      sectionName: "skills",
-      pattern:
-        /(?:^|\n)\s*(?:(?:[A-Z][a-z]+\s+){0,2})?(?:SKILLS?|COMPETENCIES|TECHNICAL\s+SKILLS|T\s*E\s*C\s*H\s*N\s*I\s*C\s*A\s*L\s+S\s*K\s*I\s*L\s*L\s*S)\s*(?:\n|$)/gi,
-    },
-    {
-      sectionName: "summary",
-      pattern: /(?:^|\n)\s*(?:(?:[A-Z][a-z]+\s+){0,2})?(?:SUMMARY|PROFILE|OBJECTIVE)\s*(?:\n|$)/gi,
-    },
-    {
-      sectionName: "certifications",
-      pattern: /(?:^|\n)\s*(?:CERTIFICATIONS|LICENSES|AWARDS)\s*(?:\n|$)/gi,
-    },
-    { sectionName: "languages", pattern: /(?:^|\n)\s*LANGUAGES\s*(?:\n|$)/gi },
-  ];
-
-  const headerMatches = [];
-
-  // Find all section headers
-  for (const { sectionName, pattern } of sectionPatterns) {
-    let match;
-    pattern.lastIndex = 0;
-    while ((match = pattern.exec(text)) !== null) {
-      headerMatches.push({
-        sectionName: sectionName,
-        headerText: match[0],
-        index: match.index,
-        length: match[0].length,
-      });
-    }
-  }
-
-  // Sort by position in text
-  headerMatches.sort((a, b) => a.index - b.index);
-
-  // Group sections - allow multiple instances of same section type (e.g., multiple experience sections)
-  const sectionGroups = {};
-  
-  for (const match of headerMatches) {
-    // Skip LANGUAGES if we already have SKILLS
-    if (match.sectionName === "languages" && sectionGroups["skills"]) {
-      continue;
-    }
-
-    if (!sectionGroups[match.sectionName]) {
-      sectionGroups[match.sectionName] = [];
-    }
-    sectionGroups[match.sectionName].push(match);
-  }
-
-  // Create flat list preserving order but marking duplicates
-  const orderedMatches = [];
-  const seenPositions = new Set();
-  
-  for (const match of headerMatches) {
-    if (!seenPositions.has(match.index)) {
-      seenPositions.add(match.index);
-      orderedMatches.push(match);
-    }
-  }
-
-  // Extract content between section headers - merge multiple instances of same section
-  for (let i = 0; i < orderedMatches.length; i++) {
-    const current = orderedMatches[i];
-    const next = orderedMatches[i + 1];
-
-    // Start after the header
-    let startIndex = current.index + current.length;
-
-    // End at the next header (or end of text)
-    const endIndex = next ? next.index : text.length;
-
-    let content = text.substring(startIndex, endIndex).trim();
-
-    // Remove leading newlines/spaces
-    content = content.replace(/^\s+/, "");
-
-    if (content.length > 0) {
-      // Merge content if section already exists (e.g., multiple experience sections)
-      if (sections[current.sectionName]) {
-        sections[current.sectionName] += "\n\n" + content;
-      } else {
-        sections[current.sectionName] = content;
-      }
-    }
-  }
-
-  return sections;
-}
-
-// Role keywords that must appear in a header line for it to count as a
-// job title, so wrapped mid-sentence PDF fragments (e.g. "Child Labor
-// rehab, rescuing 23 children,") don't get mistaken for a new job.
-const WORK_ROLE_KEYWORDS = [
-  "supervisor", "coordinator", "manager", "leader", "engineer",
-  "analyst", "developer", "intern", "director", "officer",
-  "designer", "consultant", "specialist", "lead", "senior",
-  "junior", "associate", "principal", "staff",
-];
-
-function looksLikeJobTitle(text) {
-  const lower = text.toLowerCase();
-  return WORK_ROLE_KEYWORDS.some((kw) => lower.includes(kw));
-}
-
-// Parses "Role at Organization" or "Role, Organization" out of a header
-// line. `matched` is true only when one of those patterns was actually
-// found - callers use that (together with looksLikeJobTitle) to decide
-// whether a line is really a job header.
-function parseJobHeaderLine(headerText) {
-  const text = headerText.replace(/^[●•\-]\s*/, "").trim();
-
-  const atMatch = text.match(/^(.+?)\s+at\s+(.+)$/i);
-  if (atMatch) {
-    return { position: atMatch[1].trim(), company: atMatch[2].trim(), matched: true };
-  }
-
-  if (text.includes(",")) {
-    const parts = text.split(",").map((p) => p.trim()).filter((p) => p);
-    return {
-      position: parts[0] || "",
-      company: parts.slice(1).join(", "),
-      matched: parts.length > 1,
-    };
-  }
-
-  return { position: text, company: "", matched: false };
-}
-
-function isValidWorkHeader(text) {
-  return looksLikeJobTitle(text) && parseJobHeaderLine(text).matched;
-}
-
-// Convert 2-digit years to 4-digit (21 -> 2021, 23 -> 2023)
-function convertWorkYear(dateStr) {
-  if (!dateStr) return dateStr;
-  return dateStr.replace(/(\w+)\s+(\d{2})$/i, (match, month, year) => {
-    const numYear = parseInt(year, 10);
-    // If year is 00-50, assume 2000-2050, otherwise 1950-1999
-    const fullYear = numYear <= 50 ? 2000 + numYear : 1900 + numYear;
-    return `${month} ${fullYear}`;
-  });
-}
-
-// Find the line index where each real job entry starts. A line only
-// starts a new entry when the portion before any trailing/flush-right
-// date (or the whole line, if bulleted with no date) is a valid job
-// header (role keyword + "Role at Org"/"Role, Org" pattern). This keeps
-// wrapped continuation lines - including ones that happen to end in a
-// flush-right date - from being mistaken for a new job.
-function findWorkJobBoundaries(lines) {
-  const datePattern =
-    /(\w+\.?\s+\d{2,4})\s*[-–—]\s*((?:\w+\.?\s+\d{2,4})|present|current)/i;
-  const boundaries = [];
-
-  lines.forEach((line, idx) => {
-    const trimmed = line.trim();
-    if (!trimmed) return;
-
-    const startsWithBullet = /^[●•\-]/.test(trimmed);
-
-    if (startsWithBullet) {
-      const withoutBullet = trimmed.replace(/^[●•\-]\s*/, "");
-      const colonIdx = withoutBullet.indexOf(":");
-      const headerCandidate =
-        colonIdx > 0 ? withoutBullet.substring(0, colonIdx) : withoutBullet;
-      if (isValidWorkHeader(headerCandidate)) {
-        boundaries.push(idx);
-      }
-    } else {
-      const dateMatch = trimmed.match(datePattern);
-      const headerCandidate = dateMatch
-        ? trimmed.slice(0, dateMatch.index).trim()
-        : trimmed;
-      if (headerCandidate && isValidWorkHeader(headerCandidate)) {
-        boundaries.push(idx);
-      }
-    }
-  });
-
-  return boundaries;
-}
-
-function parseWorkJobBlock(blockText) {
-  const datePattern =
-    /(\w+\.?\s+\d{2,4})\s*[-–—]\s*((?:\w+\.?\s+\d{2,4})|present|current)/i;
-  const dateMatch = blockText.match(datePattern);
-  if (!dateMatch) return null;
-
-  const startDate = convertWorkYear(dateMatch[1]);
-  const endDate =
-    dateMatch[2].toLowerCase() === "present" || dateMatch[2].toLowerCase() === "current"
-      ? "Present"
-      : convertWorkYear(dateMatch[2]);
-
-  const withoutDate = blockText.replace(dateMatch[0], "").trim();
-  const lines = withoutDate.split("\n");
-  const firstLine = lines[0] || "";
-  const colonIdx = firstLine.indexOf(":");
-
-  let headerText = "";
-  let descriptionText = "";
-
-  if (colonIdx > 0) {
-    headerText = firstLine.substring(0, colonIdx).replace(/^[●•\-]\s*/, "").trim();
-    const afterColon = firstLine.substring(colonIdx + 1).trim();
-    const remainingLines = lines.slice(1).join(" ").trim();
-    descriptionText = [afterColon, remainingLines].filter((t) => t).join(" ");
-  } else {
-    headerText = firstLine.replace(/^[●•\-]\s*/, "").trim();
-    descriptionText = lines.slice(1).join(" ").trim();
-  }
-
-  const { position, company } = parseJobHeaderLine(headerText);
-
-  const summary = descriptionText
-    .split("\n")
-    .map((l) => l.replace(/^[●•\-]\s*/, "").trim())
-    .filter((l) => l)
-    .join(" ")
-    .replace(/\s+/g, " ")
-    .trim();
-
-  return {
-    position: position || "",
-    company: company || "",
-    startDate: startDate,
-    endDate: endDate,
-    summary: summary,
-  };
-}
-
-function parseWorkExperience(text) {
-  if (!text) return [];
-
-  const lines = text.split("\n");
-  const boundaryLineIdxs = findWorkJobBoundaries(lines);
-  if (boundaryLineIdxs.length === 0) return [];
-
-  // Convert line indices into character offsets so we can slice out each
-  // job's full block of wrapped lines (header through to the next job's
-  // boundary, or end of text).
-  const lineOffsets = [];
-  let offset = 0;
-  for (const line of lines) {
-    lineOffsets.push(offset);
-    offset += line.length + 1;
-  }
-
-  const jobs = [];
-  for (let i = 0; i < boundaryLineIdxs.length; i++) {
-    const startIdx = lineOffsets[boundaryLineIdxs[i]];
-    const endIdx =
-      boundaryLineIdxs[i + 1] !== undefined
-        ? lineOffsets[boundaryLineIdxs[i + 1]]
-        : text.length;
-    const blockText = text.substring(startIdx, endIdx).trim();
-
-    const job = parseWorkJobBlock(blockText);
-    if (job && job.startDate) {
-      jobs.push(job);
-    }
-  }
-
-  return jobs;
-}
-
-function parseEducation(text) {
-  if (!text) return [];
-
-  const education = [];
-
-  // Strategy: Find all date ranges first (these are our anchors)
-  // Then extract institution/degree/location around each date
-  // Format: [Institution] [StartDate - EndDate] [Degree] [Location]
-
-  // Support both 2-digit (21) and 4-digit (2021) years
-  const dateRangePattern =
-    /(\w+\.?\s+\d{2,4})\s*[-–—]\s*((?:\w+\.?\s+\d{2,4})|present|current)/gi;
-  let dateMatch;
-  const dateMatches = [];
-
-  while ((dateMatch = dateRangePattern.exec(text)) !== null) {
-    dateMatches.push({
-      fullMatch: dateMatch[0],
-      startDate: dateMatch[1],
-      endDate: dateMatch[2],
-      index: dateMatch.index,
+// ==================== PARSING ====================
+async function handleParsePDF() {
+  if (!STATE.pdfArrayBuffer || STATE.busy) return;
+  hideUploadError();
+  setBusy(true);
+  try {
+    const doc = await extractDocument(pdfjsLib, STATE.pdfArrayBuffer.slice(0));
+    STATE.rawText = doc.text;
+    STATE.resume = parseLines(doc.lines, doc.stats, {
+      meta: { source: STATE.pdfFile ? STATE.pdfFile.name : "upload", pages: doc.pages.length },
     });
+    afterParse();
+  } catch (error) {
+    console.error("[parse]", error);
+    showUploadError(friendlyError(error));
+  } finally {
+    setBusy(false);
   }
+}
 
-  dateMatches.forEach((dm, i) => {
-  });
-
-  if (dateMatches.length === 0) {
-    return [];
+function handleParseText() {
+  const input = $("textInput");
+  const text = input ? input.value : "";
+  if (!text.trim()) {
+    showUploadError("Paste some resume text first.");
+    return;
   }
+  hideUploadError();
+  try {
+    STATE.rawText = text;
+    STATE.resume = parseText(text, { meta: { source: "pasted-text" } });
+    afterParse();
+  } catch (error) {
+    console.error("[parse-text]", error);
+    showUploadError("Could not parse the pasted text.");
+  }
+}
 
-  // Process each date range found
-  for (let i = 0; i < dateMatches.length; i++) {
-    const current = dateMatches[i];
-    const next = dateMatches[i + 1];
-
-    // Extract institution: look backward from date for institution keywords
-    // Strategy: Find the line containing institution before the date
-    let institution = "";
-    const beforeDateText = text.substring(
-      Math.max(0, current.index - 300),
-      current.index
+function afterParse() {
+  updateDataSection();
+  setExportEnabled(true);
+  const r = STATE.resume;
+  const empty = !(r.work && r.work.length) && !(r.education && r.education.length) && !(r.skills && r.skills.length);
+  if (empty) {
+    showUploadError(
+      "Resume parsed but little structured data was found. The layout may be unusual; check the JSON tab and the diagnostics below.",
+      "warning",
     );
-    
-    // Split into lines and find the one with institution keywords
-    const linesBeforeDate = beforeDateText.split('\n').reverse();
-    
-    const institutionKeywords = [
-      "University",
-      "College",
-      "Institute",
-      "School",
-      "Academy",
-    ];
-    
-    for (const line of linesBeforeDate) {
-      const trimmedLine = line.trim();
-      // Check if this line contains an institution keyword
-      for (const keyword of institutionKeywords) {
-        if (trimmedLine.toLowerCase().includes(keyword.toLowerCase())) {
-          // Take the full line as institution, removing leading bullets
-          institution = trimmedLine.replace(/^[●•]\s*/, '').trim();
-          // Extract just the institution part (before comma or location)
-          const commaIndex = institution.indexOf(',');
-          if (commaIndex > 0) {
-            institution = institution.substring(0, commaIndex).trim();
-          }
-          break;
-        }
-      }
-      if (institution) break;
-    }
-
-    // Extract degree and area: look forward from date end for degree keywords
-    let studyType = "Degree";
-    let area = "";
-    const afterDateStart = current.index + current.fullMatch.length;
-    let afterDateText;
-
-    // Determine end point for extracting text after date
-    // Use next date as boundary if available
-    if (next) {
-      afterDateText = text.substring(afterDateStart, next.index);
-    } else {
-      afterDateText = text.substring(afterDateStart, afterDateStart + 200);
-    }
-
-    // BRUTE FORCE: Look for degree keywords directly in the text
-
-    let degreeFound = false;
-    let degreeType = "";
-    let fieldOfStudy = "";
-    let location = "";
-
-    // Look for each degree keyword
-    const degrees = [
-      { keyword: "Master's", type: "Master's" },
-      { keyword: "Master", type: "Master's" },
-      { keyword: "MSDS", type: "Master's" },
-      { keyword: "MS", type: "Master's" },
-      { keyword: "M.S.", type: "Master's" },
-      { keyword: "MBA", type: "Master's" },
-      { keyword: "M.A.", type: "Master's" },
-      { keyword: "Bachelor's", type: "Bachelor's" },
-      { keyword: "Bachelor", type: "Bachelor's" },
-      { keyword: "BTech", type: "Bachelor's" },
-      { keyword: "B.Tech", type: "Bachelor's" },
-      { keyword: "BS", type: "Bachelor's" },
-      { keyword: "B.S.", type: "Bachelor's" },
-      { keyword: "BA", type: "Bachelor's" },
-      { keyword: "B.A.", type: "Bachelor's" },
-      { keyword: "PhD", type: "PhD" },
-      { keyword: "Ph.D.", type: "PhD" },
-      { keyword: "Doctorate", type: "PhD" },
-      { keyword: "Certificate", type: "Certificate" },
-      { keyword: "Cert.", type: "Certificate" },
-      { keyword: "Diploma", type: "Diploma" },
-    ];
-
-    for (const degreeInfo of degrees) {
-      // Case-insensitive search
-      const upperText = afterDateText.toUpperCase();
-      const upperKeyword = degreeInfo.keyword.toUpperCase();
-      const idx = upperText.indexOf(upperKeyword);
-
-      if (idx !== -1) {
-        degreeType = degreeInfo.type;
-
-        // Extract field: Look for "in/of [field]" after the degree keyword
-        const afterKeyword = afterDateText.substring(
-          idx + degreeInfo.keyword.length
-        );
-
-        // Look for "in/of [field]" - stop at location (City, Country) or end of line
-        // Location indicators: Capital City, Capital Country/State
-        let fieldMatch = afterKeyword.match(
-          /\s*(?:in|of)\s+([A-Za-z\s&(),-]+?)(?=\s+[A-Z][a-z]+,\s*[A-Z]|,|\n|$)/i
-        );
-
-        if (fieldMatch && fieldMatch[1]) {
-          // Clean the field - remove location part if present
-          let field = fieldMatch[1].trim();
-          // Remove anything after "City," pattern
-          field = field.replace(/\s+[A-Z][a-z]+,.*$/, "").trim();
-          fieldOfStudy = field;
-        }
-
-        // Extract location (City, Country) - look for comma-separated location pattern
-        const locationMatch = afterKeyword.match(
-          /\s+([A-Z][a-z]+),\s*([A-Z][A-Za-z]{1,10})/
-        );
-        if (locationMatch) {
-          location = `${locationMatch[1]}, ${locationMatch[2]}`;
-        }
-
-        degreeFound = true;
-        break;
-      }
-    }
-
-    if (degreeFound) {
-      studyType = degreeType;
-      area = fieldOfStudy || degreeType;
-    }
-
-    // Only add if we found at least institution and dates
-    // Accept any degree-related keywords, not just Master's/Bachelor's/PhD
-    const isDegreeType =
-      studyType === "Master's" ||
-      studyType === "Bachelor's" ||
-      studyType === "PhD" ||
-      studyType === "Certificate" ||
-      studyType === "Diploma" ||
-      studyType.toLowerCase().includes('ms') ||
-      studyType.toLowerCase().includes('bs') ||
-      studyType.toLowerCase().includes('ba') ||
-      studyType.toLowerCase().includes('ma') ||
-      studyType.toLowerCase().includes('mba') ||
-      studyType.toLowerCase().includes('btech') ||
-      studyType.toLowerCase().includes('cert') ||
-      studyType.toLowerCase().includes('diploma') ||
-      studyType.toLowerCase().includes('degree') ||
-      degreeFound; // If we found ANY degree keyword, accept it
-    
-    // Convert 2-digit years to 4-digit (21 -> 2021, 23 -> 2023)
-    const convertYear = (dateStr) => {
-      if (!dateStr) return dateStr;
-      return dateStr.replace(/(\w+)\s+(\d{2})$/i, (match, month, year) => {
-        const numYear = parseInt(year);
-        const fullYear = numYear <= 50 ? 2000 + numYear : 1900 + numYear;
-        return `${month} ${fullYear}`;
-      });
-    };
-
-    const startDate = convertYear(current.startDate);
-    const endDate = current.endDate.toLowerCase() === 'present' || current.endDate.toLowerCase() === 'current'
-      ? 'Present'
-      : convertYear(current.endDate);
-
-    if (institution && current.startDate && current.endDate && isDegreeType) {
-      education.push({
-        institution: institution,
-        studyType: studyType,
-        area: area || institution,
-        startDate: startDate,
-        endDate: endDate,
-        location: location,
-      });
-    }
   }
-
-  return education;
+  renderCurrentTemplate();
 }
 
-function parseSkills(text) {
-  if (!text) return [];
-
-  const skills = [];
-  const lines = text
-    .split("\n")
-    .map((l) => l.trim())
-    .filter((l) => l.length > 0);
-
-  for (const line of lines) {
-    // Check if line has a category (e.g., "Programming Languages: Java, Python")
-    const colonIndex = line.indexOf(":");
-    if (colonIndex > 0) {
-      const name = line.substring(0, colonIndex).trim();
-      const keywordsStr = line.substring(colonIndex + 1).trim();
-
-      // Split keywords while preserving content in parentheses
-      const keywords = [];
-      let current = "";
-      let parenDepth = 0;
-
-      for (let i = 0; i < keywordsStr.length; i++) {
-        const char = keywordsStr[i];
-        if (char === "(") {
-          parenDepth++;
-          current += char;
-        } else if (char === ")") {
-          parenDepth--;
-          current += char;
-        } else if (
-          (char === "," || char === ";" || char === "•" || char === "|") &&
-          parenDepth === 0
-        ) {
-          // This is a separator and we're not inside parentheses
-          if (current.trim().length > 0) {
-            keywords.push(current.trim());
-          }
-          current = "";
-        } else {
-          current += char;
-        }
-      }
-
-      // Add the last keyword
-      if (current.trim().length > 0) {
-        keywords.push(current.trim());
-      }
-
-      if (keywords.length > 0) {
-        skills.push({
-          name: name,
-          keywords: keywords,
-        });
-      }
-    } else {
-      // Just a list of skills
-      const keywords = line
-        .split(/[,;•|]/)
-        .map((s) => s.trim())
-        .filter((s) => s.length > 0);
-      if (keywords.length > 0) {
-        skills.push({
-          name: "Skills",
-          keywords: keywords,
-        });
-      }
-    }
-  }
-
-  return skills;
-}
-
-function parseProjects(text) {
-  if (!text) return [];
-
-  const projects = [];
-
-  // Strategy: Split text into sections by finding project headers
-  // Project header format: "Project Name | tech1, tech2"
-  // The key is to ONLY capture techs on the SAME line as the pipe, not beyond first newline
-  // Don't use ^ anchor - projects might not start at beginning of line in PDF text
-
-  const headerPattern = /([A-Z][A-Za-z0-9\s\-&()]+?)\s*\|\s*([^\n]*)(?=\n|$)/g;
-
-  let headerMatch;
-  const headers = [];
-
-  while ((headerMatch = headerPattern.exec(text)) !== null) {
-    headers.push({
-      name: headerMatch[1].trim(),
-      techsRaw: headerMatch[2].trim(),
-      index: headerMatch.index,
-      matchLength: headerMatch[0].length,
-    });
-  }
-
-  // For each header, extract techs and description
-  for (let i = 0; i < headers.length; i++) {
-    const header = headers[i];
-
-    // Extract techs from the header line (between | and end of line, or until bullet)
-    let techs = header.techsRaw;
-    let description = ""; // IMPORTANT: techs might contain bullet on same line OR newline separates techs from description
-    // Handle bullet on same line first
-    if (techs.includes("•")) {
-      const bulletIndex = techs.indexOf("•");
-      // Text before bullet = techs, after = description start
-      techs = techs.substring(0, bulletIndex).trim();
-      // Description starts after the bullet
-      let restOfDescription = header.techsRaw.substring(bulletIndex);
-
-      // Get text from end of header line to start of next project or end
-      const headerEnd = header.index + header.matchLength;
-      const nextHeaderIndex =
-        i + 1 < headers.length ? headers[i + 1].index : text.length;
-      const fullDescription = text.substring(headerEnd, nextHeaderIndex).trim();
-
-      description =
-        restOfDescription + (fullDescription ? "\n" + fullDescription : "");
-    } else {
-      // No bullet in header line - description is everything after this header until next project
-      const headerEnd = header.index + header.matchLength;
-      const nextHeaderIndex =
-        i + 1 < headers.length ? headers[i + 1].index : text.length;
-      description = text.substring(headerEnd, nextHeaderIndex).trim();
-    }
-
-    // Parse techs into keywords array - split by comma/semicolon, filter out descriptions
-    const keywords = techs
-      .split(/[,;]/)
-      .map((s) => s.trim())
-      .filter((s) => {
-        // Filter: non-empty, no bullets, no newlines, not just whitespace
-        if (!s || s === "•" || /[\n]/.test(s) || /^[\s]*$/.test(s))
-          return false;
-        return true;
-      });
-
-    // Clean description - remove bullets, collapse whitespace
-    description = description
-      .split("\n")
-      .map((line) => line.replace(/^•\s*/, "").trim())
-      .filter((line) => line.length > 0)
-      .join(" ")
-      .replace(/\s+/g, " ")
-      .trim();
-
-    // Add project
-    if (header.name && (keywords.length > 0 || description.length > 0)) {
-      projects.push({
-        name: header.name,
-        keywords: keywords,
-        summary: description,
-      });
-    }
-  }
-
-  return projects;
-}
-
-function parseCertifications(text) {
-  if (!text) return [];
-
-  const certifications = [];
-  const lines = text
-    .split("\n")
-    .map((l) => l.trim())
-    .filter((l) => l.length > 0);
-
-  // Look for a trailing 4-digit year (e.g. "... 2023") to split
-  // "Certification Name Issuer 2023" into name + date. Anchored to the end
-  // of the line and restricted to a bare year (not "<Capitalized word> year")
-  // since the certification name itself often ends in a capitalized word
-  // (e.g. "AWS Certified Solutions Architect 2023"), which would otherwise
-  // get swallowed into the date.
-  const dateRegex = /\d{4}\s*$/;
-
-  for (const line of lines) {
-    const dateMatch = line.match(dateRegex);
-    if (dateMatch) {
-      certifications.push({
-        name: line.substring(0, dateMatch.index).replace(/[-|•,]\s*$/, "").trim(),
-        issuer: "",
-        date: dateMatch[0].trim(),
-      });
-    } else {
-      certifications.push({
-        name: line,
-        issuer: "",
-        date: "",
-      });
-    }
-  }
-
-  return certifications;
-}
-
-// ==================== DATA CLEANUP ====================
-function cleanupResumeData(resumeData) {
-  // Clean common formatting issues from extracted data
-  const cleaned = JSON.parse(JSON.stringify(resumeData)); // Deep copy
-
-  // Fix common company name issues
-  const companyFixes = {
-    "Service - now": "ServiceNow",
-    "service - now": "ServiceNow",
-    "Service -": "Service",
-  };
-
-  // Apply company fixes
-  if (cleaned.work && Array.isArray(cleaned.work)) {
-    cleaned.work.forEach((job) => {
-      // Fix company name
-      for (const [bad, good] of Object.entries(companyFixes)) {
-        if (job.company && job.company.includes(bad)) {
-          job.company = job.company.replace(bad, good);
-        }
-      }
-      // Also fix position field
-      for (const [bad, good] of Object.entries(companyFixes)) {
-        if (job.position && job.position.includes(bad)) {
-          job.position = job.position.replace(bad, good);
-        }
-      }
-      // Remove extra spaces
-      if (job.company) job.company = job.company.replace(/\s+/g, " ").trim();
-      if (job.position) job.position = job.position.replace(/\s+/g, " ").trim();
-    });
-  }
-
-  // Clean education data
-  if (cleaned.education && Array.isArray(cleaned.education)) {
-    cleaned.education.forEach((edu) => {
-      if (edu.institution)
-        edu.institution = edu.institution.replace(/\s+/g, " ").trim();
-      if (edu.area) edu.area = edu.area.replace(/\s+/g, " ").trim();
-      if (edu.location) edu.location = edu.location.replace(/\s+/g, " ").trim();
-    });
-  }
-
-  // Clean projects
-  if (cleaned.projects && Array.isArray(cleaned.projects)) {
-    cleaned.projects.forEach((project) => {
-      if (project.name) project.name = project.name.replace(/\s+/g, " ").trim();
-      if (project.summary)
-        project.summary = project.summary.replace(/\s+/g, " ").trim();
-      if (project.keywords && Array.isArray(project.keywords)) {
-        project.keywords = project.keywords.map((k) =>
-          k.replace(/\s+/g, " ").trim()
-        );
-      }
-    });
-  }
-
-  // Clean skills
-  if (cleaned.skills && Array.isArray(cleaned.skills)) {
-    cleaned.skills.forEach((skillGroup) => {
-      if (skillGroup.name)
-        skillGroup.name = skillGroup.name.replace(/\s+/g, " ").trim();
-      if (skillGroup.keywords && Array.isArray(skillGroup.keywords)) {
-        skillGroup.keywords = skillGroup.keywords.map((k) =>
-          k.replace(/\s+/g, " ").trim()
-        );
-      }
-    });
-  }
-
-  // Clean certifications
-  if (cleaned.certifications && Array.isArray(cleaned.certifications)) {
-    cleaned.certifications.forEach((cert) => {
-      if (cert.name) cert.name = cert.name.replace(/\s+/g, " ").trim();
-      if (cert.issuer) cert.issuer = cert.issuer.replace(/\s+/g, " ").trim();
-      if (cert.date) cert.date = cert.date.replace(/\s+/g, " ").trim();
-    });
-  }
-
-  return cleaned;
-}
-
-// ==================== UI UPDATES ====================
+// ==================== DATA SECTION ====================
 function updateDataSection() {
-  // Update raw text
-  document.getElementById("rawOutput").value = STATE.rawText;
-
-  // Update JSON
-  document.getElementById("jsonOutput").value = JSON.stringify(
-    STATE.resumeData,
-    null,
-    2
-  );
-
-  // Update preview
+  $("rawOutput").value = STATE.rawText;
+  $("jsonOutput").value = JSON.stringify(STATE.resume, null, 2);
   updateDataPreview();
 }
 
+function confidenceBar(label, value) {
+  const pct = Math.round((value || 0) * 100);
+  const level = pct >= 75 ? "high" : pct >= 45 ? "medium" : "low";
+  return `<div class="conf-row"><span class="conf-label">${escapeHtml(label)}</span><span class="conf-track"><span class="conf-fill ${level}" style="width:${pct}%"></span></span><span class="conf-pct">${pct}%</span></div>`;
+}
+
 function updateDataPreview() {
-  const preview = document.getElementById("dataPreview");
-  const data = STATE.resumeData;
+  const r = STATE.resume;
+  const b = r.basics || {};
+  const meta = r.meta || {};
+  const conf = meta.confidence || {};
+  const loc = b.location ? [b.location.city, b.location.region].filter(Boolean).join(", ") : "";
+  const rows = [
+    ["Name", b.name],
+    ["Title", b.label],
+    ["Email", b.email],
+    ["Phone", b.phone],
+    ["Location", loc],
+    ["Profiles", (b.profiles || []).map((p) => p.network).join(", ")],
+  ].filter(([, v]) => v);
 
-  let html = "";
+  const counts = [
+    ["Experience", (r.work || []).length, "position(s)"],
+    ["Education", (r.education || []).length, "degree(s)"],
+    ["Skills", (r.skills || []).reduce((n, g) => n + (g.keywords || []).length, 0), "keyword(s)"],
+    ["Projects", (r.projects || []).length, "project(s)"],
+    ["Certifications", (r.certificates || []).length, "item(s)"],
+  ].filter(([, n]) => n > 0);
 
-  // Basics
-  html += '<div class="info-group">';
-  html += "<h3>Basic Information</h3>";
-  html += `<p><strong>Name:</strong> ${data.basics.name}</p>`;
-  if (data.basics.label)
-    html += `<p><strong>Title:</strong> ${data.basics.label}</p>`;
-  if (data.basics.email)
-    html += `<p><strong>Email:</strong> ${data.basics.email}</p>`;
-  if (data.basics.phone)
-    html += `<p><strong>Phone:</strong> ${data.basics.phone}</p>`;
-  if (data.basics.location)
-    html += `<p><strong>Location:</strong> ${data.basics.location}</p>`;
+  let html = '<div class="info-group"><h3>Basic Information</h3>';
+  html += rows.map(([k, v]) => `<p><strong>${k}:</strong> ${escapeHtml(v)}</p>`).join("");
   html += "</div>";
-
-  // Summary
-  if (data.basics.summary) {
-    html += '<div class="info-group">';
-    html += "<h3>Summary</h3>";
-    html += `<p>${data.basics.summary}</p>`;
+  if (b.summary) html += `<div class="info-group"><h3>Summary</h3><p>${escapeHtml(b.summary)}</p></div>`;
+  if (counts.length) {
+    html += '<div class="info-group"><h3>Sections found</h3>';
+    html += counts.map(([k, n, unit]) => `<p><strong>${k}:</strong> ${n} ${unit}</p>`).join("");
     html += "</div>";
   }
-
-  // Work
-  if (data.work && data.work.length > 0) {
-    html += '<div class="info-group">';
-    html += "<h3>Experience</h3>";
-    html += `<p>${data.work.length} position(s) found</p>`;
-    html += "</div>";
+  html += '<div class="info-group"><h3>Parser confidence</h3>';
+  html += ["basics", "work", "education", "skills", "projects"].map((k) => confidenceBar(k, conf[k])).join("");
+  html += "</div>";
+  if (meta.sections && meta.sections.length) {
+    html += '<div class="info-group"><h3>Detected headings</h3><p class="muted">';
+    html += meta.sections.map((s) => `${escapeHtml(s.title || s.id)} → <code>${escapeHtml(s.id)}</code>`).join(" · ");
+    html += "</p></div>";
   }
-
-  // Education
-  if (data.education && data.education.length > 0) {
-    html += '<div class="info-group">';
-    html += "<h3>Education</h3>";
-    html += `<p>${data.education.length} degree(s) found</p>`;
-    html += "</div>";
+  if (meta.warnings && meta.warnings.length) {
+    html += '<div class="info-group warnings"><h3>Diagnostics</h3><ul>';
+    html += meta.warnings.map((w) => `<li>${escapeHtml(w)}</li>`).join("");
+    html += "</ul></div>";
   }
-
-  // Skills
-  if (data.skills && data.skills.length > 0) {
-    html += '<div class="info-group">';
-    html += "<h3>Skills</h3>";
-    html += `<p>${data.skills.length} skill category/ies found</p>`;
-    html += "</div>";
-  }
-
-  // Projects
-  if (data.projects && data.projects.length > 0) {
-    html += '<div class="info-group">';
-    html += "<h3>Projects</h3>";
-    html += `<p>${data.projects.length} project(s) found</p>`;
-    html += "</div>";
-  }
-
-  preview.innerHTML = html;
+  $("dataPreview").innerHTML = html;
 }
 
 function resetDataSection() {
-  document.getElementById("rawOutput").value = "";
-  document.getElementById("jsonOutput").value = "";
-  document.getElementById("dataPreview").innerHTML =
-    '<div class="empty-state"><p>📋 Upload and parse a PDF to see structured data</p></div>';
+  $("rawOutput").value = "";
+  $("jsonOutput").value = "";
+  $("dataPreview").innerHTML = '<div class="empty-state"><p>📋 Upload and parse a PDF to see structured data</p></div>';
 }
 
-function enableTemplates() {
-  const templateCards = document.querySelectorAll(".template-card");
-  templateCards.forEach((card) => {
-    card.disabled = false;
-  });
+function setExportEnabled(enabled) {
+  $("exportBtn").disabled = !enabled;
+  $("downloadJsonBtn").disabled = !enabled;
+  $("printBtn").disabled = !enabled;
 }
 
-function disableTemplates() {
-  const templateCards = document.querySelectorAll(".template-card");
-  templateCards.forEach((card) => {
-    card.disabled = true;
-    card.classList.remove("active");
-  });
-
-  document.getElementById("exportBtn").disabled = true;
-  document.getElementById("downloadJsonBtn").disabled = true;
-  document.getElementById("printBtn").disabled = true;
-}
-
-function resetPreview() {
-  const container = document.getElementById("resumeContainer");
-  container.innerHTML = `
-    <div class="empty-state large">
-      <div class="empty-icon">📄</div>
-      <h3>No Template Applied</h3>
-      <p>Upload your PDF resume and select a template to see the preview</p>
-    </div>
-  `;
-}
-
-// ==================== TAB SWITCHING ====================
+// ==================== TABS ====================
 function handleTabSwitch(e) {
-  const targetTab = e.currentTarget.dataset.tab;
-
-  // Update tab buttons
+  const target = e.currentTarget.dataset.tab;
   document.querySelectorAll(".tab-btn").forEach((btn) => {
-    btn.classList.remove("active");
+    const active = btn === e.currentTarget;
+    btn.classList.toggle("active", active);
+    btn.setAttribute("aria-selected", active ? "true" : "false");
   });
-  e.currentTarget.classList.add("active");
-
-  // Update tab content
-  document.querySelectorAll(".tab-content").forEach((content) => {
-    content.classList.remove("active");
-  });
-
-  const contentMap = {
-    preview: "previewTab",
-    json: "jsonTab",
-    raw: "rawTab",
-  };
-
-  document.getElementById(contentMap[targetTab]).classList.add("active");
+  document.querySelectorAll(".tab-content").forEach((c) => c.classList.remove("active"));
+  const map = { preview: "previewTab", json: "jsonTab", raw: "rawTab" };
+  $(map[target]).classList.add("active");
 }
 
-// ==================== TEMPLATE SELECTION ====================
+// ==================== TEMPLATES ====================
 function handleTemplateSelect(e) {
   const card = e.currentTarget;
-  const templateName = card.dataset.template;
-
-  // Allow selecting templates even when no resume is parsed so users can preview styles.
-
-  // Update active state
   document.querySelectorAll(".template-card").forEach((c) => {
     c.classList.remove("active");
+    c.setAttribute("aria-pressed", "false");
   });
   card.classList.add("active");
-
-  // Render template
-  STATE.currentTemplate = templateName;
+  card.setAttribute("aria-pressed", "true");
+  STATE.currentTemplate = card.dataset.template;
   renderCurrentTemplate();
+  setExportEnabled(!!STATE.resume);
+}
 
-  // Enable export buttons only if we have parsed resume data
-  const hasData = !!STATE.resumeData;
-  document.getElementById("exportBtn").disabled = !hasData;
-  document.getElementById("downloadJsonBtn").disabled = !hasData;
-  document.getElementById("printBtn").disabled = !hasData;
+function currentRender() {
+  const model = toTemplateModel(STATE.resume || SAMPLE_RESUME);
+  return renderTemplate(STATE.currentTemplate, model);
 }
 
 function renderCurrentTemplate() {
-  const container = document.getElementById("resumeContainer");
-  // Use real parsed data when available; otherwise render a friendly sample so the user sees the design
-  const dataToRender = STATE.resumeData || SAMPLE_DATA;
-  const result = renderTemplate(STATE.currentTemplate, dataToRender);
-  // result is { html, css }
-
-  // Inject HTML
-  container.innerHTML = result.html || "";
-
-  // Inject CSS by creating a style tag
-  let styleTag = document.getElementById("template-styles");
+  const container = $("resumeContainer");
+  const result = currentRender();
+  container.innerHTML = result.html;
+  let styleTag = $("template-styles");
   if (!styleTag) {
     styleTag = document.createElement("style");
     styleTag.id = "template-styles";
     document.head.appendChild(styleTag);
   }
-  styleTag.textContent = result.css || "";
-
-  STATE.lastRender = result;
+  styleTag.textContent = result.css;
 }
 
-// ==================== EXPORT & PRINT ====================
-function handleExport() {
-  if (!STATE.resumeData || !STATE.currentTemplate) {
-    alert("Please select a template first.");
-    return;
-  }
-  const renderResult = renderTemplate(STATE.currentTemplate, STATE.resumeData);
-  const resumeHTML = renderResult.html || "";
-  const resumeCSS = renderResult.css || "";
+// ==================== EXPORT ====================
+function safeFileStem() {
+  const name = (STATE.resume && STATE.resume.basics && STATE.resume.basics.name) || "resume";
+  return name.replace(/[^\w.-]+/g, "_").replace(/^_+|_+$/g, "") || "resume";
+}
 
-  const fullHTML = `
-<!DOCTYPE html>
+function download(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function handleExport() {
+  if (!STATE.resume) return;
+  const { html, css } = currentRender();
+  const title = escapeHtml(((STATE.resume.basics || {}).name || "Resume") + " - Resume");
+  const fullHTML = `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${STATE.resumeData.basics.name} - Resume</title>
+  <title>${title}</title>
   <style>
-    body {
-      margin: 0;
-      padding: 20px;
-      font-family: Arial, sans-serif;
-    }
+    body { margin: 0; padding: 20px; font-family: Arial, sans-serif; }
     @media print { body { padding: 0; } }
-    ${resumeCSS}
+    ${css}
   </style>
 </head>
 <body>
-  ${resumeHTML}
+${html}
 </body>
 </html>
-  `;
-
-  // Create download
-  const blob = new Blob([fullHTML], { type: "text/html" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `${STATE.resumeData.basics.name.replace(/\s+/g, "_")}_${
-    STATE.currentTemplate
-  }_resume.html`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-}
-
-function handlePrint() {
-  if (!STATE.resumeData || !STATE.currentTemplate) {
-    alert("Please select a template first.");
-    return;
-  }
-
-  window.print();
+`;
+  download(new Blob([fullHTML], { type: "text/html" }), `${safeFileStem()}_${STATE.currentTemplate}_resume.html`);
 }
 
 function handleDownloadJSON() {
-  if (!STATE.resumeData) {
-    alert("No resume data to download. Please parse a resume first.");
-    return;
-  }
-
-  const content = JSON.stringify(STATE.resumeData, null, 2);
-  const blob = new Blob([content], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `${STATE.resumeData.basics.name.replace(
-    /\s+/g,
-    "_"
-  )}_resume.json`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  if (!STATE.resume) return;
+  download(new Blob([JSON.stringify(STATE.resume, null, 2)], { type: "application/json" }), `${safeFileStem()}_resume.json`);
 }
 
-// ==================== UTILITY FUNCTIONS ====================
-function copyToClipboard(elementId, btn) {
-  const element = document.getElementById(elementId);
+function handlePrint() {
+  if (!STATE.resume) return;
+  window.print();
+}
+
+// ==================== UTILITIES ====================
+async function copyToClipboard(elementId, btn) {
+  const element = $(elementId);
   if (!element) return;
-
-  // Select and copy
-  element.select();
-  document.execCommand("copy");
-
-  // Visual feedback
-  const copyBtn = btn || document.activeElement;
-  if (copyBtn && copyBtn.classList && copyBtn.classList.contains("btn-copy")) {
-    const originalHTML = copyBtn.innerHTML;
-    copyBtn.innerHTML = "<span>✓</span> Copied!";
-    copyBtn.style.color = "var(--success)";
-
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(element.value);
+    } else {
+      element.select();
+      document.execCommand("copy");
+    }
+  } catch {
+    element.select();
+    document.execCommand("copy");
+  }
+  if (btn) {
+    const original = btn.innerHTML;
+    btn.innerHTML = "<span>✓</span> Copied!";
+    btn.classList.add("copied");
     setTimeout(() => {
-      copyBtn.innerHTML = originalHTML;
-      copyBtn.style.color = "";
+      btn.innerHTML = original;
+      btn.classList.remove("copied");
     }, 2000);
   }
 }
+
+// Debug handle for the browser console.
+window.__resumeParser = { state: STATE, parseText, version: PARSER_VERSION };

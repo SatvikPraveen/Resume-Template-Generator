@@ -3,6 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Layout-aware resume parser: turn a PDF resume into JSON Resume and render it in 12 templates, entirely in your browser." />
     <title>Resume Template Generator - PDF to Multiple Styled Versions</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
@@ -52,6 +53,13 @@
               <span class="error-icon">⚠️</span>
               <span id="uploadErrorText"></span>
             </div>
+
+            <details class="text-input-details">
+              <summary>Or paste resume text instead</summary>
+              <label for="textInput" class="sr-only">Resume text</label>
+              <textarea id="textInput" class="code-textarea text-input" rows="10" placeholder="Paste the plain text of a resume here (headings on their own lines work best)…"></textarea>
+              <button id="parseTextBtn" class="btn btn-secondary" type="button"><span class="btn-icon">📝</span> Parse Text</button>
+            </details>
           </div>
         </section>
 
@@ -59,14 +67,14 @@
         <section class="section data-section">
           <div class="section-header">
             <h2><span class="step-num">2</span> Extracted Data</h2>
-            <div class="tabs">
-              <button class="tab-btn active" data-tab="preview">Preview</button>
-              <button class="tab-btn" data-tab="json">JSON</button>
-              <button class="tab-btn" data-tab="raw">Raw Text</button>
+            <div class="tabs" role="tablist" aria-label="Extracted data views">
+              <button class="tab-btn active" data-tab="preview" role="tab" aria-selected="true" aria-controls="previewTab">Preview</button>
+              <button class="tab-btn" data-tab="json" role="tab" aria-selected="false" aria-controls="jsonTab">JSON</button>
+              <button class="tab-btn" data-tab="raw" role="tab" aria-selected="false" aria-controls="rawTab">Raw Text</button>
             </div>
           </div>
 
-          <div class="tab-content active" id="previewTab">
+          <div class="tab-content active" id="previewTab" role="tabpanel">
             <div id="dataPreview" class="data-preview">
               <div class="empty-state">
                 <p>📋 Upload and parse a PDF to see structured data</p>
@@ -74,13 +82,10 @@
             </div>
           </div>
 
-          <div class="tab-content" id="jsonTab">
+          <div class="tab-content" id="jsonTab" role="tabpanel">
             <div class="code-header">
               <span class="code-title">Structured JSON Data</span>
-              <button
-                class="btn-copy"
-                onclick="copyToClipboard('jsonOutput', this)"
-              >
+              <button class="btn-copy" data-copy="jsonOutput" type="button">
                 <span>📋</span> Copy
               </button>
             </div>
@@ -93,13 +98,10 @@
             ></textarea>
           </div>
 
-          <div class="tab-content" id="rawTab">
+          <div class="tab-content" id="rawTab" role="tabpanel">
             <div class="code-header">
               <span class="code-title">Raw Extracted Text</span>
-              <button
-                class="btn-copy"
-                onclick="copyToClipboard('rawOutput', this)"
-              >
+              <button class="btn-copy" data-copy="rawOutput" type="button">
                 <span>📋</span> Copy
               </button>
             </div>
@@ -121,7 +123,7 @@
           </div>
 
           <div class="template-grid">
-            <button class="template-card" data-template="classic">
+            <button class="template-card" data-template="classic" type="button" aria-pressed="false">
               <div class="template-preview classic-preview">
                 <div class="prev-header"></div>
                 <div class="prev-line"></div>
@@ -134,7 +136,7 @@
               </div>
             </button>
 
-            <button class="template-card" data-template="modern">
+            <button class="template-card" data-template="modern" type="button" aria-pressed="false">
               <div class="template-preview modern-preview">
                 <div class="prev-sidebar"></div>
                 <div class="prev-main">
@@ -148,7 +150,7 @@
               </div>
             </button>
 
-            <button class="template-card" data-template="creative">
+            <button class="template-card" data-template="creative" type="button" aria-pressed="false">
               <div class="template-preview creative-preview">
                 <div class="prev-accent"></div>
                 <div class="prev-line"></div>
@@ -160,7 +162,7 @@
               </div>
             </button>
 
-            <button class="template-card" data-template="tech">
+            <button class="template-card" data-template="tech" type="button" aria-pressed="false">
               <div class="template-preview tech-preview">
                 <div class="prev-grid">
                   <div class="prev-box"></div>
@@ -175,7 +177,7 @@
               </div>
             </button>
 
-            <button class="template-card" data-template="executive">
+            <button class="template-card" data-template="executive" type="button" aria-pressed="false">
               <div class="template-preview executive-preview">
                 <div class="prev-header elegant"></div>
                 <div class="prev-line"></div>
@@ -187,7 +189,7 @@
               </div>
             </button>
 
-            <button class="template-card" data-template="compact">
+            <button class="template-card" data-template="compact" type="button" aria-pressed="false">
               <div class="template-preview compact-preview">
                 <div class="prev-columns">
                   <div class="prev-col">
@@ -206,7 +208,7 @@
               </div>
             </button>
 
-            <button class="template-card" data-template="minimal">
+            <button class="template-card" data-template="minimal" type="button" aria-pressed="false">
               <div class="template-preview minimal-preview">
                 <div class="prev-header minimal"></div>
                 <div class="prev-line"></div>
@@ -218,7 +220,7 @@
               </div>
             </button>
 
-            <button class="template-card" data-template="colorful">
+            <button class="template-card" data-template="colorful" type="button" aria-pressed="false">
               <div class="template-preview colorful-preview">
                 <div class="prev-accent colorful"></div>
                 <div class="prev-box"></div>
@@ -230,7 +232,7 @@
               </div>
             </button>
 
-            <button class="template-card" data-template="dark">
+            <button class="template-card" data-template="dark" type="button" aria-pressed="false">
               <div class="template-preview dark-preview">
                 <div class="prev-header dark"></div>
                 <div class="prev-line dark"></div>
@@ -242,7 +244,7 @@
               </div>
             </button>
 
-            <button class="template-card" data-template="ats">
+            <button class="template-card" data-template="ats" type="button" aria-pressed="false">
               <div class="template-preview ats-preview">
                 <div class="prev-title"></div>
                 <div class="prev-line"></div>
@@ -255,7 +257,7 @@
               </div>
             </button>
 
-            <button class="template-card" data-template="academic">
+            <button class="template-card" data-template="academic" type="button" aria-pressed="false">
               <div class="template-preview academic-preview">
                 <div class="prev-center"></div>
                 <div class="prev-line"></div>
@@ -267,7 +269,7 @@
               </div>
             </button>
 
-            <button class="template-card" data-template="corporate">
+            <button class="template-card" data-template="corporate" type="button" aria-pressed="false">
               <div class="template-preview corporate-preview">
                 <div class="prev-sidebar"></div>
                 <div class="prev-main">
@@ -315,7 +317,7 @@
 
     <footer class="footer">
       <div class="container">
-        <p>Built with PDF.js • Inspired by JSON Resume • GitHub Pages Ready</p>
+        <p>Built with PDF.js • Outputs <a href="https://jsonresume.org/schema/" rel="noopener">JSON Resume</a> • <span id="parserVersion"></span></p>
         <p class="privacy-note">
           All processing happens locally in your browser. Your data never leaves
           your device.
@@ -323,58 +325,7 @@
       </div>
     </footer>
 
-    <!-- PDF.js Library - Local Build (2.6MB combined) -->
-    <script type="module">
-      // Import pdf.mjs which sets up globalThis.pdfjsLib
-      import * as pdfModule from "./vendor/pdf.mjs";
-
-      // Explicitly attach pdfjsLib to window so non-module scripts can access it
-      window.pdfjsLib = pdfModule;
-
-      // Configure the worker to use local file
-      if (window.pdfjsLib && window.pdfjsLib.GlobalWorkerOptions) {
-        window.pdfjsLib.GlobalWorkerOptions.workerSrc =
-          "./vendor/pdf.worker.mjs";
-      }
-
-      // Set flag to indicate module is ready
-      window._pdfModuleReady = true;
-
-      // Dispatch event so other scripts know pdf.js is ready
-      window.dispatchEvent(new Event("pdfjs-ready"));
-    </script>
-
-    <!-- Load PDFTextExtractor FIRST before other PDF scripts -->
-    <script src="src/parsers/pdfjs-parser.js"></script>
-
-    <!-- Robust Resume Parser -->
-    <script src="src/parsers/robust-parser.js"></script>
-
-    <!-- ========== PDF.JS MASTER APIS (Complete Capability Exposure) ========== -->
-    <!-- Master API wrapper - exposes ALL 56+ pdf.mjs APIs -->
-    <script src="src/core/PdfMasterApi.js"></script>
-
-    <!-- Advanced PDF Processor - domain-specific functionality -->
-    <script src="src/core/EnhancedPdfProcessor.js"></script>
-
-    <!-- Advanced Features - parallel processing, OCR, rendering, etc -->
-    <script src="src/core/PdfAdvancedFeatures.js"></script>
-
-    <!-- ========== ORIGINAL CORE MODULES ========== -->
-    <!-- Advanced PDF Extraction (legacy - still available) -->
-    <script src="src/core/PdfAdvancedExtractor.js"></script>
-
-    <!-- Enhanced Resume Normalizer (legacy - still available) -->
-    <script src="src/core/EnhancedResumeNormalizer.js"></script>
-
-    <!-- Advanced Template Renderer -->
-    <script src="src/core/TemplateRenderer.js"></script>
-
-    <!-- Legacy Template Renderer -->
-    <script src="templates.js"></script>
-
-    <!-- ========== MAIN APPLICATION ========== -->
-    <!-- Main Application Logic -->
-    <script src="app.js?v=3.0"></script>
+    <!-- Application (ES module). pdf.js is imported from ./vendor inside app.js. -->
+    <script type="module" src="app.js"></script>
   </body>
 </html>
