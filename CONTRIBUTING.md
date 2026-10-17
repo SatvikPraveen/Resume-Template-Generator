@@ -107,7 +107,7 @@ git push origin feature/your-feature-name
 
 ## 💻 Development Setup
 
-The app is static (no build step). Node 20+ is needed only for tests and the evaluation harness.
+The app is static (no build step). Node 22.13+ is needed only for tests and the evaluation harness.
 
 ```bash
 npm install          # dev dependencies: pdfjs-dist (Node build) and pdfkit (fixture generation)
