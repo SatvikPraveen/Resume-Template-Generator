@@ -5,14 +5,14 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "test": "node --test test/",
+    "test": "node --test \"test/*.test.js\"",
     "eval": "node eval/run.js",
     "eval:check": "node eval/run.js --check",
     "fixtures:pdf": "node eval/make-pdf-fixtures.js",
     "serve": "python3 -m http.server 8000"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=22.13"
   },
   "devDependencies": {
     "pdfjs-dist": "^6.4.299",
